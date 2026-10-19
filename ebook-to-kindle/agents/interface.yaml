@@ -1,0 +1,10 @@
+interface:
+  display_name: "Ebook to Kindle PW2"
+  short_description: "制作 Paperwhite 2 电子书或按用户要求发送到 Kindle 时使用；不用于下载或去除 DRM。"
+  default_prompt: "Use $ebook-to-kindle to convert this authorized local document into a PW2-targeted AZW3 offline, use an explicit private single-book workspace when iterations are expected, run the automated off-device gates, and require a device check for changed bytes."
+compatibility:
+  canonical_format: "agent-skills"
+  activation:
+    mode: "manual"
+  execution:
+    shell: "bash"

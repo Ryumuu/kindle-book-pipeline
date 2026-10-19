@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "default_policy": {
+    "require_https": true,
+    "custom_hosts": "deny-by-default for bootstrap; optional note translation delegates transport to the installed Codex CLI after an explicit content opt-in",
+    "auth": "none",
+    "review_rule": "Confirmed bootstrap may download pinned runtime assets. A separate localize_notes translate command may send selected footnote text to the chosen Codex model only after --allow-cloud-translation. Conversion jobs are offline.",
+    "runtime_enforcement": "For direct GitHub assets, bootstrap enforces the declared redirect hosts and complete-file SHA-256. PyPI and Hugging Face installs are forced to their declared official endpoints with inherited indexes, endpoints, credentials, and proxies removed; this is endpoint binding, not an OS host allowlist. The 109 package versions are locked without per-wheel hashes, and four selected model weight files receive exact post-download hashes. On the supported macOS host, every conversion-time Calibre, Docling, Java, and PDF probe subprocess is wrapped by sandbox-exec with deny network*. Resource preflight is defense in depth. Bootstrap is the only direct-download entrypoint; optional note translation is a separate explicit content-scoped delegation to the installed Codex CLI."
+  },
+  "scripts": {
+    "scripts/bootstrap_runtime.py": {
+      "purpose": "Download fixed, hash-verified Calibre, EPUBCheck, Temurin, CPython, and official Docling model assets after explicit approval.",
+      "allowed_hosts": [
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "huggingface.co",
+        "cdn-lfs.huggingface.co",
+        "cas-bridge.xethub.hf.co"
+      ],
+      "allowed_path_prefixes": [
+        "/kovidgoyal/calibre/releases/download/",
+        "/w3c/epubcheck/releases/download/",
+        "/adoptium/temurin21-binaries/releases/download/",
+        "/astral-sh/python-build-standalone/releases/download/",
+        "/simple/",
+        "/packages/",
+        "/docling-project/docling-layout-heron/",
+        "/docling-project/docling-layout-heron-onnx/",
+        "/docling-project/docling-models/"
+      ],
+      "requires_https": true,
+      "redirect_policy": "Direct downloads may redirect only from github.com to release-assets.githubusercontent.com; all direct files must still match fixed SHA-256 values.",
+      "package_index_policy": "uv is forced to https://pypi.org/simple with inherited indexes, credentials, endpoints, and proxies removed.",
+      "model_endpoint_policy": "HF_ENDPOINT is forced to https://huggingface.co, Xet is disabled, and inherited HF credentials/endpoints/proxies are removed.",
+      "custom_url_policy": "not supported",
+      "timeout_seconds": 3600,
+      "auth": "none"
+    },
+    "scripts/localize_notes.py": {
+      "purpose": "Translate only selected pending footnote groups through an ephemeral schema-constrained Codex CLI turn.",
+      "allowed_service": "installed Codex CLI managed OpenAI transport",
+      "host_policy": "not hard-coded here because the installed Codex client owns authenticated transport; this exception is command- and content-scoped rather than a general host allowlist",
+      "requires_explicit_flag": "--allow-cloud-translation",
+      "default_model": "gpt-5.3-codex-spark",
+      "input_transport": "JSON on stdin; never command-line arguments",
+      "session_policy": "--ephemeral --ignore-user-config --ignore-rules --sandbox read-only",
+      "output_policy": "exact JSON Schema plus key-completeness validation",
+      "auth": "existing local Codex authentication; the Skill does not read, export, copy, or serialize credentials",
+      "ordinary_conversion_impact": "none; ebook_to_kindle.py remains wrapped in deny network*"
+    },
+    "scripts/send_to_kindle.py": {
+      "purpose": "Upload one finished file to Amazon Send to Kindle through the user's logged-in local Ego browser, then optionally push that one document to one named device.",
+      "allowed_hosts": [
+        "www.<user-selected amazon domain>"
+      ],
+      "requires_explicit_request": true,
+      "auth": "existing browser session; the script never reads or stores Amazon cookies"
+    },
+    "scripts/send_to_kindle_email.py": {
+      "purpose": "E-mail one EPUB/PDF/DOCX to the user's own Send-to-Kindle address.",
+      "allowed_hosts": [
+        "user-configured SMTP host"
+      ],
+      "requires_explicit_request": true,
+      "auth": "SMTP app password from ~/.config/kindle/email_config.json (mode 0600) or KINDLE_SMTP_PASS"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "recommended_threshold": 0.5,
+  "should_trigger": [
+    {"text": "把这个本地扫描 PDF 转成适合 Paperwhite 2 的 azw3", "family": "scan-pdf"},
+    {"text": "将这份 DOCX 转成 Kindle 能读的 mobi6", "family": "docx-mobi"},
+    {"text": "Convert my local EPUB to PW2-compatible AZW3", "family": "epub-azw3"},
+    {"text": "把 Markdown 文稿生成 Kindle 电子书，不要上传云端", "family": "markdown-offline"}
+  ],
+  "should_not_trigger": [
+    {"text": "帮我把网页内容转成 Markdown 存到 Nextcloud", "family": "markdown-export"},
+    {"text": "搜索并下载一本盗版 Kindle 书", "family": "download"},
+    {"text": "去掉这本亚马逊电子书的 DRM", "family": "drm"},
+    {"text": "把 PDF 翻译成中文 Word", "family": "translation"},
+    {"text": "自动把文件上传到我的 Kindle 账号", "family": "account-upload"},
+    {"text": "提取 PDF 表格并做数据分析", "family": "pdf-analysis"}
+  ],
+  "near_neighbor": [
+    {"text": "把 PDF 合并后压缩体积", "family": "pdf-utility"},
+    {"text": "把 EPUB 转成 Markdown 方便做笔记", "family": "epub-to-markdown"},
+    {"text": "给我推荐一台新的 Kindle", "family": "device-recommendation"}
+  ]
+}

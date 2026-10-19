@@ -1,0 +1,47 @@
+{
+  "fallback_positive_concepts": [
+    "conversion_action",
+    "kindle_output",
+    "local_document"
+  ],
+  "positive_concepts": {
+    "conversion_action": {
+      "weight": 0.26,
+      "phrases": ["convert", "conversion", "转换", "转成", "生成"]
+    },
+    "kindle_output": {
+      "weight": 0.42,
+      "phrases": ["kindle", "paperwhite", "pw2", "azw3", "mobi6", "mobi", "电子书"]
+    },
+    "local_document": {
+      "weight": 0.18,
+      "phrases": ["local document", "local pdf", "local epub", "本地", "pdf", "docx", "html", "txt", "markdown", "epub"]
+    },
+    "scanned_ocr": {
+      "weight": 0.14,
+      "phrases": ["scanned", "scan", "ocr", "扫描", "文字识别"]
+    }
+  },
+  "negative_concepts": {
+    "download_or_drm": {
+      "weight": 0.8,
+      "exclusive": true,
+      "phrases": ["download", "drm", "下载", "盗版", "去掉 drm", "移除 drm"]
+    },
+    "translation": {
+      "weight": 0.6,
+      "exclusive": true,
+      "phrases": ["translate", "translation", "翻译"]
+    },
+    "account_or_transfer": {
+      "weight": 0.65,
+      "exclusive": true,
+      "phrases": ["upload to kindle", "kindle account", "send to kindle", "上传到", "kindle 账号", "自动传输"]
+    },
+    "other_document_job": {
+      "weight": 0.55,
+      "exclusive": true,
+      "phrases": ["转成 markdown", "to markdown", "合并", "压缩", "提取表格", "数据分析", "转成 word", "推荐"]
+    }
+  }
+}

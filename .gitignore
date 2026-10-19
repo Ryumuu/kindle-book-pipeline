@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+ENV/
+
+# Sensitive files & credentials
+.env
+.env.*
+email_config.json
+config.json
+*.pem
+*.key
+PRIVATE/
+
+# Ebooks & large binaries (output artifacts)
+*.azw3
+*.mobi
+*.epub
+*.pdf
+*.docx
+!ebook-to-kindle/evals/fixtures/*
+workspaces/
+images_clean/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs & temp
+*.log
+.temp/
+.cache/

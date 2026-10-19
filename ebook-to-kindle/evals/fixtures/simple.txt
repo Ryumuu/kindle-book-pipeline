@@ -1,0 +1,9 @@
+Paperwhite 2 conversion fixture
+
+第一章 本地转换
+
+这是用于最快证伪的纯文本样本。它包含中文、English words、数字 20260811，以及足够长的正文来验证 EPUBCheck、AZW3 容器版本和 Kindle 回读内容门。
+
+第二章 离线边界
+
+转换过程不上传文件，不连接 Kindle 账号，也不自动传输到设备。

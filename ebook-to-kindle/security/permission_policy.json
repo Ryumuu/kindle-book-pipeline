@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.0",
+  "reviewed_at": "2026-10-19",
+  "transitive_entrypoint_review": {
+    "scripts/ebook_to_kindle.py": {
+      "reviewed_modules": [
+        "scripts/ebook_kindle/cli.py",
+        "scripts/ebook_kindle/contract.py",
+        "scripts/ebook_kindle/core.py",
+        "scripts/ebook_kindle/gates.py",
+        "scripts/ebook_kindle/normalize.py",
+        "scripts/ebook_kindle/pdf.py",
+        "scripts/ebook_kindle/pipeline.py",
+        "scripts/ebook_kindle/runtime.py",
+        "scripts/ebook_kindle/workspace.py"
+      ],
+      "effective_capabilities": [
+        "file_write",
+        "subprocess"
+      ],
+      "network_during_conversion": false,
+      "network_enforcement": "all third-party conversion and runtime-probe subprocesses use macOS sandbox-exec deny network*",
+      "review_result": "approved under the same bounded paths and subprocess scope below"
+    },
+    "scripts/localize_notes.py": {
+      "reviewed_modules": [
+        "scripts/ebook_kindle/localization.py",
+        "scripts/ebook_kindle/gates.py",
+        "scripts/ebook_kindle/pipeline.py",
+        "scripts/ebook_kindle/workspace.py"
+      ],
+      "effective_capabilities": [
+        "file_write",
+        "subprocess",
+        "network-after-explicit-opt-in"
+      ],
+      "network_during_conversion": false,
+      "network_during_translation": "only the translate subcommand after --allow-cloud-translation; extract, approve, apply, and ordinary convert are local/offline",
+      "content_boundary": "only selected footnote source text is sent on stdin to the explicitly selected Codex model; no book files, paths, ledgers, rules, or reports are attached",
+      "review_result": "approved as a separate explicit cloud step; per-ID approval is required before apply"
+    },
+    "evals/run_acceptance.py": {
+      "reviewed_modules": [
+        "scripts/ebook_to_kindle.py",
+        "evals/verify_fixture_roundtrip.py"
+      ],
+      "effective_capabilities": [
+        "file_write",
+        "subprocess"
+      ],
+      "network_during_conversion": false,
+      "network_enforcement": "conversion subprocesses inherit the same macOS sandbox-exec deny network* boundary",
+      "overwrite_policy": "non-empty output roots require explicit --overwrite",
+      "review_result": "approved for synthetic local acceptance fixtures only"
+    },
+    "evals/verify_fixture_roundtrip.py": {
+      "reviewed_modules": [
+        "scripts/ebook_kindle/core.py",
+        "scripts/ebook_kindle/runtime.py"
+      ],
+      "effective_capabilities": [
+        "file_write",
+        "subprocess"
+      ],
+      "network_during_conversion": false,
+      "network_enforcement": "roundtrip Calibre subprocesses use macOS sandbox-exec deny network*",
+      "overwrite_policy": "existing JSON reports require explicit --overwrite",
+      "review_result": "approved for local synthetic Kindle roundtrip verification only"
+    },
+    "scripts/send_to_kindle.py": {
+      "reviewed_modules": [
+        "scripts/send_to_kindle_email.py"
+      ],
+      "effective_capabilities": [
+        "subprocess",
+        "network-after-explicit-request"
+      ],
+      "network_during_conversion": false,
+      "content_boundary": "only the selected output file is uploaded to the user's own Amazon account; touches only the newest library entry whose title matches, never select-all",
+      "review_result": "approved as an explicit user-requested step"
+    },
+    "scripts/send_to_kindle_email.py": {
+      "reviewed_modules": [],
+      "effective_capabilities": [
+        "network-after-explicit-request"
+      ],
+      "network_during_conversion": false,
+      "content_boundary": "one attachment to the user's configured Kindle address through the user's own SMTP server; password from 0600 config or env only",
+      "review_result": "approved as an explicit user-requested step"
+    }
+  },
+  "capabilities": {
+    "network": {
+      "decision": "approved",
+      "reviewer": "maintainer",
+      "scope": "scripts/bootstrap_runtime.py after --accept-download, plus scripts/localize_notes.py translate after --allow-cloud-translation for the exact selected footnote ledger; normal conversion remains offline. Optional Kindle push: scripts/send_to_kindle.py (Amazon Send to Kindle via the user's own logged-in local browser) and scripts/send_to_kindle_email.py (user-configured SMTP), only when the user explicitly asks to send.",
+      "reason": "The user explicitly approved fixed runtime downloads and an independent GPT-5.3-Codex-Spark footnote-localization stage. Each real translation run remains visible and opt-in.",
+      "expires_at": "2027-08-11",
+      "evidence": [
+        "references/runtime.md",
+        "references/note-localization.md",
+        "security/network_policy.json"
+      ]
+    },
+    "file_write": {
+      "decision": "approved",
+      "reviewer": "maintainer",
+      "scope": "Exact non-runtime output directory, explicit private single-book workspace, private note ledger/output, private runtime root (including disposable install/job caches), and exact local Skill target only; hdiutil also creates a short-lived read-only system mount for the pinned Calibre image.",
+      "reason": "Conversion, installation, reports, and rollback require bounded writes to the exact paths approved in the visible task card.",
+      "expires_at": "2027-08-11",
+      "evidence": [
+        "SKILL.md",
+        "references/runtime.md",
+        "references/workspace.md",
+        "references/note-localization.md"
+      ]
+    },
+    "subprocess": {
+      "decision": "approved",
+      "reviewer": "maintainer",
+      "scope": "Pinned Calibre, Java/EPUBCheck, isolated Docling Python, hdiutil, local uv installation, and the optional ephemeral read-only Codex CLI translation command. Optional Kindle push runs ego-browser (local browser) or nothing (SMTP) only when the user asks to send.",
+      "reason": "The verified conversion chain and optional translation step use bounded argument arrays, timeouts, schema validation, private temporary state, and no shell interpolation.",
+      "expires_at": "2027-08-11",
+      "evidence": [
+        "references/quality-gates.md",
+        "references/runtime.md"
+      ]
+    }
+  }
+}

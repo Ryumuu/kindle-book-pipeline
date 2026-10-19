@@ -1,0 +1,52 @@
+/* Reflow-first defaults for Kindle Paperwhite 2 (758x1024, monochrome). */
+body {
+  font-size: 1em;
+  line-break: strict;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  word-break: normal;
+}
+
+.kindle-toc-anchor {
+  color: transparent;
+  display: block;
+  font-size: 0;
+  height: 0;
+  line-height: 0;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.kindle-noteref { font-size: 0.75em; line-height: 1.2; vertical-align: super; }
+.kindle-footnote { font-size: 0.9em; line-height: 1.35; margin: 0.6em 0; }
+.kindle-footnote-backlink { text-decoration: none; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold;
+  line-height: 1.25;
+  margin: 1.2em 0 0.6em;
+  page-break-after: avoid;
+}
+
+h1 { font-size: 1.5em; page-break-before: always; }
+h2 { font-size: 1.3em; }
+h3 { font-size: 1.15em; }
+h4, h5, h6 { font-size: 1em; }
+p, li, blockquote { font-size: 1em; line-height: 1.5; }
+p { margin: 0.55em 0; text-align: justify; }
+figcaption { font-size: 0.9em; line-height: 1.35; }
+img, svg { max-width: 100%; height: auto; }
+table { border-collapse: collapse; max-width: 100%; }
+th, td { border: 1px solid #777; padding: 0.2em; vertical-align: top; }
+pre, code { white-space: pre-wrap; word-wrap: break-word; }
+
+.docling-furniture,
+.docling-recovered-furniture {
+  border-top: 1px solid #777;
+  font-size: 0.9em;
+  margin-top: 1.5em;
+  padding-top: 0.5em;
+}

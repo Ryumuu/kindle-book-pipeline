@@ -1,0 +1,2 @@
+# The conversion CLI uses only the standard library; this pins the authoring validator dependency.
+PyYAML==6.0.2

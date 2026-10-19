@@ -1,0 +1,47 @@
+{
+  "fixture_version": "PW2-FIXTURE-V1",
+  "privacy": "fully synthetic; no user documents or personal data",
+  "fixtures": {
+    "docx": {
+      "file": "fixtures/fixture-structured.docx",
+      "sha256": "ec8f4614b8b133675f72ecfa91371d1e0478b7d4f5ba69321eb6a2ec181f991b"
+    },
+    "digital_pdf": {
+      "file": "fixtures/fixture-digital-layout.pdf",
+      "sha256": "4b36aec8c77efed31b1fab56f9a1caeb5b81637f9b6b4a556c4a6a940fdf6c65"
+    },
+    "scanned_pdf": {
+      "file": "fixtures/fixture-scanned.pdf",
+      "sha256": "6e5af55c72199fa61319d3f1b194d8509ed96032f8d81c69040f4ac4ca4e26d7"
+    }
+  },
+  "docx": {
+    "ordered_markers": [
+      "段落 A1", "段落 A2", "段落 A3", "T1", "T2", "T3",
+      "列表项 B1", "列表项 B2", "列表项 B3", "步骤 C1", "步骤 C2", "步骤 C3",
+      "尾部标记 Z9", "END-OF-FIXTURE"
+    ]
+  },
+  "digital_pdf": {
+    "ordered_markers": [
+      "D-A1", "D-A2", "D-A3", "D1", "D2", "D3", "D-FIG",
+      "LEFT-L1", "LEFT-L2", "LEFT-L3", "RIGHT-R1", "RIGHT-R2", "RIGHT-R3",
+      "D-Z9", "END-DIGITAL-PDF"
+    ]
+  },
+  "forced_scan": {
+    "ordered_markers": [
+      "D-A1", "D-A2", "D-A3", "D1", "D2", "D3", "D-FIG",
+      "LEFT-L1", "LEFT-L2", "LEFT-L3", "RIGHT-R1", "RIGHT-R2", "RIGHT-R3",
+      "D-Z9", "END-DIGITAL-PDF"
+    ]
+  },
+  "scanned_pdf": {
+    "ordered_markers": [
+      "S-A1", "S-A2", "S-A3", "S-A4", "S1", "S2", "S3", "S-B1", "S-B2",
+      "S-Z9", "END-SCANNED-PDF"
+    ],
+    "expected_marker_counts": {"S-B1": 2},
+    "must_recognize": ["24680", "OCR TEST", "EPUB3", "AZW3", "MOBI6"]
+  }
+}

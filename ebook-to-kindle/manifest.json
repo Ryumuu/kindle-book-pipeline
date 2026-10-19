@@ -1,0 +1,12 @@
+{
+  "name": "ebook-to-kindle",
+  "version": "0.3.3",
+  "updated_at": "2026-10-19",
+  "category": "documents",
+  "license": "MIT",
+  "homepage": "https://github.com/Ryumuu/kindle-book-pipeline",
+  "platforms": [
+    "macOS 14+ on Apple Silicon"
+  ],
+  "device_target": "Kindle Paperwhite 2 (other e-ink Kindles usually work)"
+}
