@@ -1,4 +1,13 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo/logo-dark.svg">
+    <img src="docs/images/logo/logo.svg" alt="kindle-book-pipeline：放大镜照着一本纸书，书的右页变成了阅读器屏幕" width="360">
+  </picture>
+</p>
+
 # Kindle Book Pipeline
+
+中文 | [English](README.en.md)
 
 > 找书 → 挑版本 → 转成适合 Kindle 墨水屏的电子书 → 无线推送到 Kindle。
 > 既是一组命令行工具，也是可以直接交给 AI Agent（Claude Code / Codex 等）使用的 Skill。
@@ -6,8 +15,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-green.svg)]()
 [![Kindle Paperwhite](https://img.shields.io/badge/Kindle-Paperwhite-orange.svg)]()
-
-[English summary](#english-summary)
 
 ```mermaid
 flowchart LR
@@ -23,7 +30,7 @@ flowchart LR
 | :--- | :--- | :--- |
 | [`book-search/`](book-search/SKILL.md) | 多平台检索、对比、下载电子书。找书平台是插件，可以自己加 | 任意系统，Python 3.9+，只用标准库 |
 | [`ebook-to-kindle/`](ebook-to-kindle/SKILL.md) | 把 PDF / EPUB / DOCX / HTML / TXT / Markdown 离线转成适合 Kindle Paperwhite 的 AZW3（或 MOBI6、EPUB），带自动质量检查 | Apple Silicon Mac，macOS 14+ |
-| `ebook-to-kindle/scripts/send_to_kindle*.py` | 把成品推送到 Kindle：浏览器上传或 Send to Kindle 邮箱 | 浏览器模式需 macOS + Ego 浏览器（`ego-browser` 命令行）；邮件模式任意系统 |
+| `ebook-to-kindle/scripts/send_to_kindle*.py` | 把成品推送到 Kindle：浏览器上传或 Send to Kindle 邮箱 | 浏览器模式需 macOS + Ego 浏览器（`ego-browser` 命令行）；邮件模式在 macOS / Linux 上可用（Windows 未测试） |
 
 转换效果的重点：
 
@@ -32,6 +39,10 @@ flowchart LR
 - 生成两级可点击目录，并回读 Kindle 文件校验 NCX；
 - 脚注、尾注保留双向跳转；PDF 中缺失的注释只标明缺失，不编造；
 - 扫描版 PDF 走 OCR 路线，可用每本书自己的规则去掉页眉水印。
+
+同一页书在 Kindle 上的样子（左：PDF 原样；右：转换后）：
+
+![同一页《故乡》：左边是 PDF 直接放进 Kindle，整页缩小、字很小；右边是转换后按屏幕重新排版](docs/images/kindle-compare-zh.png)
 
 ## 快速开始
 
@@ -98,7 +109,7 @@ python3 ebook-to-kindle/scripts/send_to_kindle.py ~/Documents/KindleBooks/book.e
 - 报 `UPLOAD_UNCONFIRMED` 或 `BROWSER_PUSH_TIMEOUT` 时书可能已经传上去了，先去「管理内容和设备」看一眼再重试。
 - 已知局限：脚本拿不到能和这次上传一一对应的编号，只能看上传前后书库多了什么、再按书名匹配（书名完全相同或包含关系都算）。如果这段时间里同一账号的另一笔上传也出现在书库里，且书名相同或相近，脚本可能认错文档、把那一份推到设备上；页面没显示可识别的成功提示时，也可能误判这次上传成功。使用时别在其他入口同时传相同或相近书名的文件，也留意之前还没处理完的上传；要确认具体是哪一份，去「管理内容和设备」人工核对。
 
-**邮件模式**（任意系统）：
+**邮件模式**（macOS / Linux；Windows 未测试）：
 
 ```bash
 python3 ebook-to-kindle/scripts/send_to_kindle_email.py --init-config     # 生成 ~/.config/kindle/email_config.json（仅自己可读）
@@ -171,10 +182,6 @@ cd ebook-to-kindle && python3 -m unittest discover -s evals -p "test_*.py"
 - 搜索结果能搜到，不代表这份内容已获授权。
 - 找书平台由使用者自行选择，各平台的服务条款与所在地法律由使用者自行遵守。
 - 本项目与 Z-Library、Project Gutenberg、亚马逊均无隶属关系。
-
-## English summary
-
-Kindle Book Pipeline is a set of CLI tools and agent skills that search for ebooks across pluggable sources (Project Gutenberg and Z-Library built in; add your own with one Python file), convert PDF/EPUB/DOCX/HTML/TXT/Markdown offline into Kindle Paperwhite-friendly AZW3/MOBI6/EPUB with automated quality gates, and send the result to your Kindle through Amazon Send to Kindle (browser upload or e-mail). Book search and e-mail push run anywhere with Python 3.9+; conversion requires an Apple Silicon Mac on macOS 14+ (PDF conversion also needs [uv](https://docs.astral.sh/uv/) installed). No DRM removal. Not affiliated with Z-Library, Project Gutenberg or Amazon; only process content you are entitled to obtain and convert.
 
 ## License
 
