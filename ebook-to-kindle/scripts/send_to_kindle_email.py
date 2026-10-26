@@ -53,6 +53,8 @@ def _env_int(name: str) -> Optional[int]:
 
 def _tighten_permissions(path: Path) -> None:
     """An older or hand-made config may be group/world readable; it holds an SMTP password."""
+    if not hasattr(os, "getuid"):
+        return  # Windows has no POSIX owner/mode bits to tighten.
     try:
         info = os.lstat(path)
     except OSError:

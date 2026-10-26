@@ -69,15 +69,18 @@ def _fallback_definitions_from_page_texts(page_texts: List[str]) -> Dict[int, st
     return _note_profile_from_page_texts(page_texts)[0]
 
 
-def extract_pdf_note_profile(path: Path) -> Tuple[Dict[int, str], Dict[int, int]]:
+def extract_pdf_page_texts(path: Path) -> List[str]:
     import pypdfium2 as pdfium
 
     document = pdfium.PdfDocument(str(path))
     try:
-        page_texts = [page.get_textpage().get_text_range() for page in document]
+        return [page.get_textpage().get_text_range() for page in document]
     finally:
         document.close()
-    return _note_profile_from_page_texts(page_texts)
+
+
+def extract_pdf_note_profile(path: Path) -> Tuple[Dict[int, str], Dict[int, int]]:
+    return _note_profile_from_page_texts(extract_pdf_page_texts(path))
 
 
 def extract_pdf_note_fallbacks(path: Path) -> Dict[int, str]:
@@ -314,9 +317,14 @@ def convert_pdf(path: Path, output_dir: Path, artifacts: Path, mode: str) -> Dic
     outline_path = output_dir / "outline.json"
     outline_path.write_text(json.dumps(outline, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     if mode == "digital":
-        fallback_definitions, expected_reference_counts = extract_pdf_note_profile(path)
+        page_texts = extract_pdf_page_texts(path)
+        fallback_definitions, expected_reference_counts = _note_profile_from_page_texts(page_texts)
+        # The PDF's own text layer keeps the "——" and curly quotes Docling folds;
+        # punctuation is restored only where this layer confirms it.
+        text_layer: Optional[str] = "\n".join(page_texts)
     else:
         fallback_definitions, expected_reference_counts = {}, {}
+        text_layer = None
     semantic_path = output_dir / "semantic.html"
     semantic_report_path = output_dir / "semantics.json"
     document_payload = json.loads(json_path.read_text(encoding="utf-8"))
@@ -326,6 +334,7 @@ def convert_pdf(path: Path, output_dir: Path, artifacts: Path, mode: str) -> Dic
         outline,
         fallback_definitions,
         expected_reference_counts,
+        text_layer,
     )
     semantic_path.write_text(enriched, encoding="utf-8")
     semantic_report_path.write_text(

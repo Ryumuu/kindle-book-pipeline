@@ -42,7 +42,7 @@ class GutenbergProvider(Provider):
         code = _language_code(language)
         if code:
             params["languages"] = code
-        data = fetch_json(f"{API}?{urllib.parse.urlencode(params)}")
+        data = fetch_json(f"{API}?{urllib.parse.urlencode(params)}", timeout=60)
         books = []
         for item in data.get("results", []):
             if EPUB_MIME not in (item.get("formats") or {}):
@@ -67,7 +67,7 @@ class GutenbergProvider(Provider):
             raise ProviderError("Gutenberg id must be a number, as printed by `search`.")
         # The list endpoint (?ids=) is cached and fast; /books/<id>/ can take 40s+.
         try:
-            results = fetch_json(f"{API}?ids={book_id}").get("results") or []
+            results = fetch_json(f"{API}?ids={book_id}", timeout=60).get("results") or []
         except Exception:
             results = []
         item = results[0] if results else {}

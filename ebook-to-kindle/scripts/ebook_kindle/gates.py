@@ -319,6 +319,18 @@ def validate_image_retention(source: Mapping[str, int], master: Mapping[str, int
     return result
 
 
+QUOTE_VARIANTS = re.compile("[\"'\u2018\u2019\u201c\u201d]")
+
+
+def _comparable_text(value: str) -> str:
+    # PDF extraction folds curly quotes to ASCII and "——" to "--" before the
+    # semantic pass restores them. Only that exact pair is treated as equal, so
+    # a lost hyphen ("--help" vs "-help") still counts as changed content. Quote
+    # style and direction are not content and are folded to one mark.
+    value = normalize_text(value).replace(" ", "").replace("\u2014\u2014", "--")
+    return QUOTE_VARIANTS.sub('"', value)
+
+
 def _markers(value: str, count: int = 64, width: int = 24) -> List[str]:
     if len(value) <= width:
         return [value] if value else []
@@ -339,8 +351,8 @@ def compare_content(
     max_length_ratio: float = 1.50,
     max_marker_occurrence_ratio: float = 1.5,
 ) -> Dict[str, Any]:
-    baseline_n = normalize_text(baseline).replace(" ", "")
-    candidate_n = normalize_text(candidate).replace(" ", "")
+    baseline_n = _comparable_text(baseline)
+    candidate_n = _comparable_text(candidate)
     if len(baseline_n) < 20:
         raise SkillError("CONTENT_GATE_FAILED", "主 EPUB 的可回读正文不足 20 个字符。")
     if not candidate_n:

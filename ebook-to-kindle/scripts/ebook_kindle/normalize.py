@@ -33,8 +33,15 @@ TEXT_CHAPTER_LINE = re.compile(
 CJK_RANGE = "\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
 CJK_CHARACTER = re.compile(f"[{CJK_RANGE}]")
 CJK_INTERNAL_SPACE = re.compile(f"(?<=[{CJK_RANGE}])[ \t\r\n\u00a0\u3000]+(?=[{CJK_RANGE}])")
-SPACE_BEFORE_CJK_PUNCTUATION = re.compile(r"[ \t\r\n\u00a0\u3000]+(?=[，。！？；：、）》】」』”’])")
+SPACE_BEFORE_CJK_PUNCTUATION = re.compile(r"[ \t\r\n\u00a0\u3000]+(?=[，。！？；：︰、）》】」』”’])")
 SPACE_AFTER_CJK_OPENING = re.compile(r"(?<=[（《【「『“‘])[ \t\r\n\u00a0\u3000]+")
+# Curly quotes are shared with English, so a space after a closing quote is only
+# dropped when the quote itself closes CJK text or Chinese text follows it.
+SPACE_AFTER_CJK_PUNCTUATION = re.compile(
+    f"(?:(?<=[，。！？；：︰、）》】」』])[ \t\r\n\u00a0\u3000]+(?=[{CJK_RANGE}（《【「『“‘])"
+    f"|(?<=[”’])[ \t\r\n\u00a0\u3000]+(?=[{CJK_RANGE}])"
+    f"|(?<=[{CJK_RANGE}，。！？；：︰、][”’])[ \t\r\n\u00a0\u3000]+(?=[“‘]))"
+)
 CSS_RULE = re.compile(r"([^{}]+)\{([^{}]*)\}", re.S)
 CSS_FONT_SIZE = re.compile(r"(?:^|;)\s*font-size\s*:\s*([^;!}]+)", re.I)
 CSS_FONT_FAMILY = re.compile(r"(?:^|;)\s*font-family\s*:", re.I)
@@ -432,6 +439,7 @@ def _visible_block_text(element: ElementTree.Element) -> str:
 def _normalized_cjk_text(value: str) -> str:
     value = CJK_INTERNAL_SPACE.sub("", value)
     value = SPACE_BEFORE_CJK_PUNCTUATION.sub("", value)
+    value = SPACE_AFTER_CJK_PUNCTUATION.sub("", value)
     return SPACE_AFTER_CJK_OPENING.sub("", value)
 
 
@@ -455,9 +463,21 @@ def _no_space_boundary(left: str, right: str) -> bool:
     left_character = left[-1]
     right_character = right[0]
     if CJK_CHARACTER.fullmatch(left_character) and (
-        CJK_CHARACTER.fullmatch(right_character) or right_character in "，。！？；：、）》】」』”’"
+        CJK_CHARACTER.fullmatch(right_character) or right_character in "，。！？；：︰、）》】」』”’"
     ):
         return True
+    if left_character in "，。！？；：︰、）》】」』" and (
+        CJK_CHARACTER.fullmatch(right_character) or right_character in "（《【「『“‘"
+    ):
+        return True
+    if left_character in "”’":
+        if CJK_CHARACTER.fullmatch(right_character):
+            return True
+        quoted_cjk = len(left) > 1 and (
+            CJK_CHARACTER.fullmatch(left[-2]) is not None or left[-2] in "，。！？；：︰、"
+        )
+        if quoted_cjk and right_character in "“‘":
+            return True
     return left_character in "（《【「『“‘" and CJK_CHARACTER.fullmatch(right_character) is not None
 
 
@@ -725,6 +745,7 @@ def _xhtml_readability_metrics(root: ElementTree.Element) -> Mapping[str, int]:
                 value = getattr(node, attribute) or ""
                 metrics["cjk_spacing_anomalies"] += len(CJK_INTERNAL_SPACE.findall(value))
                 metrics["cjk_spacing_anomalies"] += len(SPACE_BEFORE_CJK_PUNCTUATION.findall(value))
+                metrics["cjk_spacing_anomalies"] += len(SPACE_AFTER_CJK_PUNCTUATION.findall(value))
                 metrics["cjk_spacing_anomalies"] += len(SPACE_AFTER_CJK_OPENING.findall(value))
             if excluded or _has_protected_semantics(child):
                 continue

@@ -18,6 +18,7 @@ import types
 import unittest
 import zipfile
 from pathlib import Path
+from typing import Dict, Optional, Tuple
 from unittest import mock
 
 
@@ -1395,6 +1396,9 @@ class ContainerGateTests(unittest.TestCase):
             '<ul><li class="item">工程课程包括基础工</li><li class="item">程学。</li></ul>'
             '<ul><li><a href="#chapter-anchor">第一章：结构</a></li><li><a href="#chapter-anchor">第二章：排版</a></li></ul>'
             '<p class="body">中文 字 号 ，不应被纸面空格拆散。</p>'
+            '<p class="body">标点之后， 也不应留空格。 引号“ 同样” 处理， English text, stays spaced.</p>'
+            '<p class="body">He said “hello.” “Goodbye.” 他说：“好。” “走吧。”</p>'
+            '<p class="body">He said “wait…” “Goodbye…”</p>'
             '<aside><p class="body">脚注结构不应被</p><p class="body">跨块合并。</p></aside>'
             '<pre>预 格 式</pre></body></html>'
         )
@@ -1412,6 +1416,9 @@ class ContainerGateTests(unittest.TestCase):
         self.assertGreater(changed["cjk_spacing_removed"], 0)
         self.assertIn("被错误截断", normalized)
         self.assertIn("中文字号，", normalized)
+        self.assertIn("标点之后，也不应留空格。引号“同样”处理， English text, stays spaced.", normalized)
+        self.assertIn("He said “hello.” “Goodbye.”他说：“好。”“走吧。”", normalized)
+        self.assertIn("He said “wait…” “Goodbye…”", normalized)
         self.assertIn('id="chapter-anchor"', normalized)
         self.assertIn("一种全新的汽车公司", normalized)
         self.assertIn("预 格 式", normalized)
@@ -1699,6 +1706,145 @@ class ContainerGateTests(unittest.TestCase):
         self.assertEqual(structure["toc_entries"], 4)
         self.assertEqual(structure["noteref_count"], 25)
         self.assertEqual(structure["bidirectional_note_count"], 25)
+
+    def test_pdf_semantics_restores_docling_folded_cjk_punctuation(self) -> None:
+        from ebook_kindle.runtime import default_runtime_root, runtime_paths
+
+        pdf_python = runtime_paths(default_runtime_root())["pdf_python"]
+        if not pdf_python.is_file():
+            self.skipTest("PDF runtime is not installed")
+        html = (
+            "<html><body><p>故鄉本也如此， --雖然沒有進步</p>"
+            "<p>只是收不起錢來。</p><p>。</p>"
+            "<p>' 你休息一兩天，我們便可以走了。 ' 母 親 說 ' 是的。 '</p>"
+            "<p>他連說 \"don't\" 兩次了。</p><p>Plain English -- with 'quotes'.</p>"
+            "<pre>代碼 -- \"保持\"</pre><ul><li>71 ·</li></ul><ol><li>1998</li><li>2002</li></ol>"
+            "<ol><li>1998</li></ol><p>他說：\"她回答'好的'然後離開。\"</p>"
+            "<p>例句使用 students' books 和 teachers' desks。</p><p>命令行參數中--help表示幫助。</p>"
+            "<p>前言</p><h2>第二章</h2><p>。</p><p>已經結束。</p><p>，</p><p>新的段落</p>"
+            "<p>前一段正文</p>兩段之間的正文<p>。</p><p>表達式甲--乙不能省略。</p>"
+            "<p>下面展示句號：</p><p>。</p><p>“好”與“壞”是反義詞。</p>"
+            "<p>別名示例：</p><p>。</p><p>“計算機”也叫“電腦”。</p>"
+            "<p>字符“--”由兩個半角連字符組成。</p><p>表達式甲--（乙）表示甲減去負乙。</p>"
+            "<p>以下寫法：甲--（乙）表示話語中斷。</p><p>以下寫法：甲--（乙）表示減去負數。</p>"
+            "<p>中文示例使用\"你好世界\"作為引語。</p><p>代碼字符串是\"你好世界\"並使用半角符號。</p>"
+            "<p>彎引號示例文本\"你好\"然後繼續說明，單引號字符是'。</p><p>直引號示例文本\"你好\"然後繼續說明。</p>"
+            "<p>符號對照一，以下寫法必須原樣保留：--乙--（\"你好\"），不可替換。</p>"
+            "<p>符號對照二，以下寫法必須原樣保留：--乙--（\"你好\"），不可替換。</p>"
+            "<p>排版示例文本\"\"供讀者對照，單引號字符是'。</p><p>代碼示例文本\"<code>name</code>\"供讀者對照。</p>"
+            "<p>標點示例：-甲，--乙方繼續說明。</p><p>字面示例：<em>-</em>-甲，--乙方繼續說明。</p>"
+            "<p>字面示例：--甲，<!--：-甲，-->--乙方繼續說明。</p>"
+            "<p>字面示例：--甲，<span hidden>：-甲，</span>--乙方繼續說明。</p>"
+            "</body></html>"
+        )
+        # What the PDF's own text layer says: the ground truth restorations must match.
+        text_layer = (
+            "故鄉本也如此，——雖然沒有進步\n只是收不起錢來。\n"
+            "“你休息一兩天，我們便可以走了。”母親說。\n“是的。”\n"
+            "他連說“don't”兩次了。\nPlain English -- with 'quotes'.\n代碼 -- \"保持\"\n71 ·\n"
+            "1998\n2002\n1998\n他說：“她回答‘好的’然後離開。”\n例句使用 students' books 和 teachers' desks。\n"
+            "命令行參數中--help表示幫助。\n前言\n第二章\n。\n已經結束。\n，\n新的段落\n"
+            "前一段正文\n兩段之間的正文\n。\n表達式甲--乙不能省略。\n下面展示句號：\n。\n“好”與“壞”是反義詞。\n"
+            "別名示例：\n。\n“計算機”也叫“電腦”。\n字符“--”由兩個半角連字符組成。\n表達式甲--（乙）表示甲減去負乙。\n"
+            "以下寫法：甲——（乙）表示話語中斷。\n以下寫法：甲--（乙）表示減去負數。\n"
+            "中文示例使用“你好世界”作為引語。\n代碼字符串是\"你好世界\"並使用半角符號。\n"
+            "彎引號示例文本“你好”然後繼續說明，單引號字符是'。\n直引號示例文本\"你好\"然後繼續說明。\n"
+            "符號對照一，以下寫法必須原樣保留：——乙--（“你好”），不可替換。\n"
+            "符號對照二，以下寫法必須原樣保留：--乙——（\"你好\"），不可替換。\n"
+            "排版示例文本“”供讀者對照，單引號字符是'。\n代碼示例文本\"name\"供讀者對照。\n"
+            "標點示例：-甲，——乙方繼續說明。\n字面示例：--甲，--乙方繼續說明。\n字面示例：--甲，--乙方繼續說明。\n字面示例：--甲，--乙方繼續說明。\n"
+        )
+
+        def enrich(layer: Optional[str]) -> Tuple[str, Dict[str, int]]:
+            with tempfile.TemporaryDirectory(dir="/private/tmp") as outer:
+                root = Path(outer)
+                (root / "source.html").write_text(html, encoding="utf-8")
+                (root / "document.json").write_text('{"texts": []}', encoding="utf-8")
+                (root / "outline.json").write_text("[]", encoding="utf-8")
+                command = [
+                    str(pdf_python),
+                    "-I",
+                    str(SCRIPTS / "pdf_semantics.py"),
+                    "--html",
+                    str(root / "source.html"),
+                    "--document",
+                    str(root / "document.json"),
+                    "--outline",
+                    str(root / "outline.json"),
+                    "--output",
+                    str(root / "semantic.html"),
+                    "--report",
+                    str(root / "semantics.json"),
+                ]
+                if layer is not None:
+                    (root / "text-layer.txt").write_text(layer, encoding="utf-8")
+                    command += ["--text-layer", str(root / "text-layer.txt")]
+                result = subprocess.run(command, text=True, capture_output=True, check=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return (
+                    (root / "semantic.html").read_text(encoding="utf-8"),
+                    json.loads((root / "semantics.json").read_text(encoding="utf-8")),
+                )
+
+        enriched, metrics = enrich(text_layer)
+        self.assertIn("故鄉本也如此，——雖然沒有進步", enriched)
+        self.assertIn("“ 你休息一兩天，我們便可以走了。 ” 母 親 說。 “ 是的。 ”", enriched)
+        self.assertIn("<p>只是收不起錢來。</p>", enriched)
+        # Kept: behind the heading, behind bare text, and before two non-dialogue gaps.
+        self.assertEqual(enriched.count("<p>。</p>"), 4)
+        self.assertIn("<p>前一段正文</p>兩段之間的正文<p>。</p>", enriched)
+        self.assertIn("表達式甲--乙不能省略。", enriched)
+        self.assertIn("“好”與“壞”是反義詞。", enriched)
+        self.assertIn("他連說 “don't” 兩次了。", enriched)
+        self.assertIn("Plain English -- with 'quotes'.", enriched)
+        self.assertIn('<pre>代碼 -- "保持"</pre>', enriched)
+        self.assertNotIn("71 ·", enriched)
+        self.assertIn("<li>1998</li>", enriched)
+        # Counterexamples from review: none of these may be rewritten.
+        self.assertIn("<ol><li>1998</li></ol>", enriched)
+        self.assertIn("他說：“她回答‘好的’然後離開。”", enriched)
+        self.assertIn("students' books 和 teachers' desks", enriched)
+        self.assertIn("命令行參數中--help表示幫助。", enriched)
+        self.assertIn("<p>前言</p><h2>第二章</h2><p>。</p>", enriched)
+        self.assertIn("<p>，</p><p>新的段落</p>", enriched)
+        # The text layer has these exactly as written, so nothing is "restored".
+        self.assertIn("“計算機”也叫“電腦”。", enriched)
+        self.assertIn("字符“--”由兩個半角連字符組成。", enriched)
+        self.assertIn("表達式甲--（乙）表示甲減去負乙。", enriched)
+        # The same context with a dash in one place and "--" in another is
+        # ambiguous: both stay. Evidence from one sentence never fixes another.
+        self.assertIn("以下寫法：甲--（乙）表示話語中斷。", enriched)
+        self.assertIn("以下寫法：甲--（乙）表示減去負數。", enriched)
+        self.assertIn("中文示例使用“你好世界”作為引語。", enriched)
+        self.assertIn('代碼字符串是"你好世界"並使用半角符號。', enriched)
+        # A neighbouring quote that is itself undecided cannot vouch for a mark:
+        # curly quotes elsewhere never turn this straight-quoted phrase curly.
+        self.assertIn('<p>直引號示例文本"你好"然後繼續說明。</p>', enriched)
+        # Dashes and quotes whose contexts conflict stay whole; never half restored.
+        self.assertIn('符號對照一，以下寫法必須原樣保留：--乙--（"你好"），不可替換。', enriched)
+        self.assertIn('符號對照二，以下寫法必須原樣保留：--乙--（"你好"），不可替換。', enriched)
+        # Inline code is part of the context; quotes around it are never checked without it.
+        self.assertIn('<p>代碼示例文本"<code>name</code>"供讀者對照。</p>', enriched)
+        # Inline markup splitting a "--" cannot clip the context into another
+        # sentence's: the dash is read with the whole block, so this "--" stays.
+        self.assertIn("<p>字面示例：<em>-</em>-甲，--乙方繼續說明。</p>", enriched)
+        self.assertIn("<p>標點示例：-甲，——乙方繼續說明。</p>", enriched)
+        # An HTML comment is not text the reader sees, so it never stands in as context.
+        self.assertIn("<p>字面示例：--甲，<!--：-甲，-->--乙方繼續說明。</p>", enriched)
+        # Nor does hidden text: a block with any is left exactly as it was.
+        self.assertIn('<p>字面示例：--甲，<span hidden="">：-甲，</span>--乙方繼續說明。</p>', enriched)
+        self.assertEqual(metrics["punctuation_text_layer_available"], 1)
+        self.assertEqual(metrics["restored_cjk_dashes"], 2)
+        self.assertEqual(metrics["restored_cjk_quotes"], 12)  # curly 好/壞 quotes are left alone
+        self.assertEqual(metrics["merged_lone_punctuation"], 1)
+        self.assertEqual(metrics["removed_page_number_items"], 1)
+        # No text layer (a scanned book): no evidence, so no punctuation is rewritten.
+        unverified, unverified_metrics = enrich(None)
+        self.assertIn("故鄉本也如此， --雖然沒有進步", unverified)
+        self.assertIn("' 母 親 說 ' 是的。 '", unverified)
+        self.assertEqual(unverified.count("<p>。</p>"), 5)
+        self.assertEqual(unverified_metrics["punctuation_text_layer_available"], 0)
+        self.assertEqual(unverified_metrics["restored_cjk_quotes"], 0)
 
     def test_pdf_semantics_links_split_endnote_regions_and_leaves_no_raw_references(self) -> None:
         from ebook_kindle.runtime import default_runtime_root, runtime_paths

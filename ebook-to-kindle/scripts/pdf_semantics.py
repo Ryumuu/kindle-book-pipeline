@@ -8,11 +8,12 @@ BeautifulSoup is already a locked Docling dependency. It never fetches data.
 from __future__ import annotations
 
 import argparse
+import copy
 import difflib
 import json
 import re
 import unicodedata
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -28,6 +29,49 @@ PRINTED_TOC_CHAPTER = re.compile(
     re.I,
 )
 PRINTED_TOC_PAGE = re.compile(r"^\s*(?:第\s*)?(\d{1,4})(?:\s*页)?\s*$")
+# Docling's text sanitizer folds curly quotes to ASCII and docling-parse emits
+# "——" as "--"; these patterns restore them only inside CJK-dominant blocks.
+CJK_TEXT = re.compile("[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+LATIN_LETTER = re.compile(r"[A-Za-z]")
+CJK_CONTEXT = "[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff，。！？；：︰、（）《》【】「」『』“”‘’]"
+CJK_PUNCTUATION = "[，。！？；：︰、（）《》【】「」『』“”‘’]"
+# Both neighbours must be CJK and at least one a CJK punctuation mark, so
+# "--help" and an operator between two characters ("甲--乙") stay as typed.
+CJK_DOUBLE_HYPHEN = re.compile(
+    rf"(?<={CJK_PUNCTUATION})\s*-{{2}}\s*(?={CJK_CONTEXT})"
+    rf"|(?<={CJK_CONTEXT})\s*-{{2}}\s*(?={CJK_PUNCTUATION})"
+)
+FOLDED_QUOTE = re.compile(r"""(?<![A-Za-z])['"]|['"](?![A-Za-z])""")
+CURLY_QUOTE = re.compile("[\u2018\u2019\u201c\u201d]")
+APOSTROPHE = re.compile(r"(?<=[A-Za-z])'|'(?=[A-Za-z])")
+# Only the marks Docling was seen to split off; a lone "！" or "？" may be a verse line.
+LONE_PUNCTUATION = re.compile(r"^\s*[，。、；：︰]\s*$")
+SENTENCE_END = re.compile(r"[，。！？；：︰、」』”’）》'\"…—]\s*$")
+# A dialogue tag between two quotations must end in a speech verb ("”母親說“");
+# "“好”与“坏”" is not one. Docling may still space the tag out and fold the
+# quotes ("' 母 親 說 '"): lone marks are merged before quotes are restored.
+DIALOGUE_GAP = re.compile(
+    "([”'\"]\\s*(?:[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]\\s*){0,8}?"
+    "[說说道問问答講讲喊叫嚷])(\\s*[“'\"])"
+)
+# A running footer such as "· 71 ·" that Docling tagged as a list item: the
+# decoration is required, so plain numbers ("1998", "-20") are never removed.
+PAGE_NUMBER_ITEM = re.compile(r"^[·•]?\s*\d{1,4}\s*[·•]$|^[·•]\s*\d{1,4}$")
+# Marks indexed in the PDF text layer (restored forms and the literal forms
+# they could be confused with), and how many visible characters on each side
+# must match there before a restored mark is trusted.
+EVIDENCE_MARK = re.compile("——|--|[—\\-\"'“”‘’，。、；：︰]")
+QUOTE_MARKS = "\"'“”‘’"
+LONE_MARKS = "，。、；：︰"
+EVIDENCE_WINDOW = 4
+WHITESPACE = re.compile(r"\s+")
+HIDING_STYLE = re.compile(r"display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse)", re.IGNORECASE)
+HIDING_TAGS = {"script", "style", "template", "noscript"}
+# Neighbouring marks may themselves still be folded or undecided, so the
+# context around a mark is compared with every quote read as '"' and every
+# dash as "—"; only the mark being checked keeps its exact form.
+CONTEXT_FOLD = re.compile("——|--|—|[\"'“”‘’]")
+CJK_RESTORE_BLOCKS = ("p", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "td", "th", "figcaption")
 
 
 def normalized_title(value: str) -> str:
@@ -633,12 +677,389 @@ def _synthesize_notes(
     }
 
 
+def _fold_context(text: str) -> str:
+    return CONTEXT_FOLD.sub(lambda match: '"' if match.group() in QUOTE_MARKS else "—", text)
+
+
+class TextLayerEvidence:
+    """The PDF's own text layer, used to confirm each mark before it is restored.
+
+    Docling folds "——" and curly quotes, but the text layer still has them. A
+    candidate is restored only when the text layer has the same mark between
+    the same visible neighbours, never shows those neighbours around another
+    form of the mark (a literal "--" or straight quote elsewhere makes the
+    context ambiguous), and has at least as many such places as the book has
+    candidates with that context. Neighbours are compared folded (see
+    ``CONTEXT_FOLD``), so a neighbour that is itself unconfirmed cannot vouch
+    for this mark. The candidate count comes from a dry run of the same stage
+    on the same document (``begin_dry_run``); a context the dry run never saw
+    is refused.
+    """
+
+    def __init__(self, text: str) -> None:
+        key = WHITESPACE.sub("", unicodedata.normalize("NFC", text))
+        # offsets[i]: where raw character i lands in the folded context string.
+        # tokens[j]: the raw text behind folded character j.
+        offsets = [0] * (len(key) + 1)
+        tokens: List[str] = []
+        cursor = 0
+        for match in CONTEXT_FOLD.finditer(key):
+            for index in range(cursor, match.start()):
+                offsets[index] = len(tokens)
+                tokens.append(key[index])
+            for index in range(match.start(), match.end()):
+                offsets[index] = len(tokens)
+            tokens.append(match.group())
+            cursor = match.end()
+        for index in range(cursor, len(key)):
+            offsets[index] = len(tokens)
+            tokens.append(key[index])
+        offsets[len(key)] = len(tokens)
+        self._tokens = tokens
+        self._context = _fold_context(key)
+        self._full: Counter = Counter()
+        self._left: Counter = Counter()
+        self._right: Counter = Counter()
+        for match in EVIDENCE_MARK.finditer(key):
+            start, end = offsets[match.start()], offsets[match.end()]
+            before = self._context[max(0, start - EVIDENCE_WINDOW) : start]
+            after = self._context[end : end + EVIDENCE_WINDOW]
+            self._full[(before, match.group(), after)] += 1
+            self._left[(before, match.group())] += 1
+            self._right[(match.group(), after)] += 1
+        self.recording = False
+        self._demand: Counter = Counter()
+        self._used: Counter = Counter()
+
+    def begin_dry_run(self) -> None:
+        self.recording = True
+        self._demand.clear()
+        self._used.clear()
+
+    def end_dry_run(self) -> None:
+        self.recording = False
+
+    def _count(self, before: str, mark: str, after: str) -> int:
+        if not mark:  # No index for "nothing between"; it needs both sides.
+            return self._context.count(before + after) if before and after else 0
+        if len(before) == EVIDENCE_WINDOW and len(after) == EVIDENCE_WINDOW:
+            return self._full[(before, mark, after)]
+        if len(before) == EVIDENCE_WINDOW and not after:
+            return self._left[(before, mark)]
+        if len(after) == EVIDENCE_WINDOW and not before:
+            return self._right[(mark, after)]
+        # Short on both sides (a block's first or last words): scan the folded
+        # text and check the exact mark behind each hit.
+        pattern = before + _fold_context(mark) + after
+        count = 0
+        found = self._context.find(pattern)
+        while found >= 0:
+            if self._tokens[found + len(before)] == mark:
+                count += 1
+            found = self._context.find(pattern, found + 1)
+        return count
+
+    def confirms(self, before: str, mark: str, after: str, alternatives: Iterable[str]) -> bool:
+        """Whether the text layer backs ``mark`` here and no ``alternatives``."""
+        before = _fold_context(WHITESPACE.sub("", unicodedata.normalize("NFC", before)))[-EVIDENCE_WINDOW:]
+        after = _fold_context(WHITESPACE.sub("", unicodedata.normalize("NFC", after)))[:EVIDENCE_WINDOW]
+        if len(before) + len(after) < EVIDENCE_WINDOW:
+            return False  # Too little context to tell this mark from any other.
+        supply = self._count(before, mark, after)
+        if not supply or any(self._count(before, other, after) for other in alternatives):
+            return False
+        window = (before, mark, after)
+        if self.recording:
+            self._demand[window] += 1
+            return True
+        demand = self._demand.get(window, 0)
+        if not demand or demand > supply or self._used[window] >= supply:
+            return False
+        self._used[window] += 1
+        return True
+
+
+def _cjk_dominant(text: str) -> bool:
+    cjk = len(CJK_TEXT.findall(text))
+    return cjk > 0 and cjk > len(LATIN_LETTER.findall(text))
+
+
+def _inside_code(node: Any) -> bool:
+    return any(getattr(parent, "name", None) in {"pre", "code"} for parent in node.parents)
+
+
+def _visible_strings(node: Any) -> List[Any]:
+    """Text a reader sees: no comments, CDATA, doctypes, script or style text."""
+    from bs4 import NavigableString
+
+    return [item for item in node.find_all(string=True) if type(item) is NavigableString]
+
+
+def _hides(tag: Any) -> bool:
+    return (
+        tag.name in HIDING_TAGS
+        or tag.has_attr("hidden")
+        or bool(HIDING_STYLE.search(str(tag.get("style") or "")))
+    )
+
+
+def _has_hidden(node: Any) -> bool:
+    """Whether hidden text sits in or around this block.
+
+    Such a block is left as Docling produced it: what a reader sees there is
+    not what the HTML says, so no context taken from it can be trusted.
+    """
+    return any(_hides(tag) for tag in (node, *node.parents, *node.find_all(True)) if getattr(tag, "name", None))
+
+
+def _inside_table(node: Any) -> bool:
+    return any(getattr(parent, "name", None) in {"td", "th"} for parent in node.parents)
+
+
+def _restore_quotes(soup: Any, text_nodes: Sequence[Any], evidence: TextLayerEvidence) -> Tuple[int, int]:
+    """Pair folded quotes per kind; leave the block alone when pairing is unclear.
+
+    Returns (restored, unconfirmed): a paired mark the text layer does not
+    confirm keeps its folded form.
+    """
+    values = [str(node) for node in text_nodes]
+    joined = "".join(values)
+    if CURLY_QUOTE.search(joined):
+        return 0, 0  # Mixed with surviving curly quotes: nesting cannot be recovered.
+    positions = [match.start() for match in FOLDED_QUOTE.finditer(joined)]
+    doubles = [index for index in positions if joined[index] == '"']
+    singles = [index for index in positions if joined[index] == "'"]
+    if APOSTROPHE.search(joined):
+        singles = []  # don't / students' / don<em>'t</em>: apostrophes, not quotes.
+    if len(doubles) % 2 or len(singles) % 2:
+        return 0, 0  # An unpaired mark (quote spanning blocks) makes every pairing a guess.
+    replacements: Dict[int, str] = {}
+    if doubles:
+        for order, index in enumerate(doubles):
+            replacements[index] = "“" if order % 2 == 0 else "”"
+    if singles:
+        # Without double quotes in the block, Docling's "'" stood for "“”".
+        marks = ("‘", "’") if doubles else ("“", "”")
+        for order, index in enumerate(singles):
+            replacements[index] = marks[order % 2]
+    if not replacements:
+        return 0, 0
+    # Each mark is checked against the block as Docling left it: a neighbouring
+    # quote counts only as "some quote", never as already restored.
+    confirmed = {
+        index: mark
+        for index, mark in replacements.items()
+        if evidence.confirms(
+            joined[:index], mark, joined[index + 1 :], [other for other in QUOTE_MARKS if other != mark]
+        )
+    }
+    unconfirmed = len(replacements) - len(confirmed)
+    replacements = confirmed
+    offset = 0
+    for node, value in zip(text_nodes, values):
+        local = {index - offset: mark for index, mark in replacements.items() if offset <= index < offset + len(value)}
+        offset += len(value)
+        if local:
+            node.replace_with(
+                soup.new_string("".join(local.get(i, character) for i, character in enumerate(value)))
+            )
+    return len(replacements), unconfirmed
+
+
+def _adjacent_paragraph(paragraph: Any, forward: bool) -> Any:
+    """The neighbouring p node, skipping only whitespace and comments."""
+    from bs4 import Comment
+
+    sibling = paragraph.next_sibling if forward else paragraph.previous_sibling
+    while sibling is not None and getattr(sibling, "name", None) is None:
+        if isinstance(sibling, Comment) or not str(sibling).strip():
+            sibling = sibling.next_sibling if forward else sibling.previous_sibling
+            continue
+        return None  # Visible bare text sits between them.
+    if sibling is None or sibling.name != "p" or _inside_code(sibling) or _has_hidden(sibling):
+        return None
+    return sibling if _cjk_dominant(sibling.get_text("", strip=False)) else None
+
+
+def _restore_cjk_punctuation(soup: Any, text_layer: Optional[str]) -> Dict[str, int]:
+    """Undo Docling's lossy CJK punctuation folding without touching code or Latin prose.
+
+    Text patterns only propose candidates; each one is applied only when the
+    PDF text layer confirms it. Without a text layer (scanned books) dashes,
+    quotes and lone marks are left exactly as Docling produced them.
+    """
+    page_numbers = 0
+    for item in list(soup.find_all("li")):
+        parent = item.parent
+        if parent is None or parent.name not in {"ul", "ol"} or _inside_table(parent) or _inside_code(parent):
+            continue
+        if len(parent.find_all("li", recursive=False)) != 1 or item.find(True) is not None:
+            continue
+        if parent.get("id") or item.get("id"):
+            continue
+        if PAGE_NUMBER_ITEM.fullmatch(item.get_text("", strip=True)):
+            page_numbers += 1
+            parent.decompose()
+    evidence = TextLayerEvidence(text_layer) if text_layer else None
+    metrics = {"restored_cjk_dashes": 0, "restored_cjk_quotes": 0, "merged_lone_punctuation": 0}
+    unconfirmed = 0
+    if evidence is not None:
+        # Dashes, then lone marks, then quotes: lone marks go before quotes so a
+        # quote's context already has its full stop back ("”母親說。“"). Before
+        # each stage a dry run on a copy of the document as it now stands counts
+        # how many candidates share each context, so a context the text layer
+        # has fewer times than the book is left alone.
+        for name, stage in (
+            ("restored_cjk_dashes", _restore_dashes),
+            ("merged_lone_punctuation", _merge_lone_marks),
+            ("restored_cjk_quotes", _restore_block_quotes),
+        ):
+            evidence.begin_dry_run()
+            stage(copy.copy(soup), evidence)
+            evidence.end_dry_run()
+            restored, skipped = stage(soup, evidence)
+            metrics[name] = restored
+            unconfirmed += skipped
+    return {
+        **metrics,
+        "removed_page_number_items": page_numbers,
+        "punctuation_text_layer_available": int(evidence is not None),
+        "unconfirmed_punctuation_restorations": unconfirmed,
+    }
+
+
+def _restore_blocks(soup: Any) -> List[Any]:
+    return [
+        block
+        for block in soup.find_all(CJK_RESTORE_BLOCKS)
+        if block.find(CJK_RESTORE_BLOCKS) is None
+        and not _inside_code(block)
+        and not _has_hidden(block)
+        and _cjk_dominant(block.get_text("", strip=False))
+    ]
+
+
+def _restore_dashes(soup: Any, evidence: TextLayerEvidence) -> Tuple[int, int]:
+    dashes = unconfirmed = 0
+    for block in _restore_blocks(soup):
+        if _inside_table(block) or block.name in {"td", "th"}:
+            continue
+        # Context comes from the whole block, so inline markup cannot clip a
+        # neighbour ("<em>-</em>-甲，--乙" still reads "--甲，" before the dash).
+        nodes = _visible_strings(block)
+        values = [str(node) for node in nodes]
+        joined = "".join(values)
+        starts = []
+        offset = 0
+        for value in values:
+            starts.append(offset)
+            offset += len(value)
+        edits: Dict[int, List[Tuple[int, int]]] = {}
+        for match in CJK_DOUBLE_HYPHEN.finditer(joined):
+            owner = next(
+                (
+                    index
+                    for index, start in enumerate(starts)
+                    if start <= match.start() and match.end() <= start + len(values[index])
+                ),
+                None,
+            )
+            if owner is None or _inside_code(nodes[owner]):
+                unconfirmed += 1  # Split across tags or inside code: never rewritten.
+                continue
+            if evidence.confirms(joined[: match.start()], "——", joined[match.end() :], ("--", "—", "-")):
+                edits.setdefault(owner, []).append((match.start() - starts[owner], match.end() - starts[owner]))
+            else:
+                unconfirmed += 1
+        for owner, spans in edits.items():
+            value = values[owner]
+            pieces: List[str] = []
+            cursor = 0
+            for start, end in spans:
+                pieces.extend((value[cursor:start], "——"))
+                cursor = end
+            dashes += len(spans)
+            nodes[owner].replace_with(soup.new_string("".join(pieces) + value[cursor:]))
+    return dashes, unconfirmed
+
+
+def _merge_lone_marks(soup: Any, evidence: TextLayerEvidence) -> Tuple[int, int]:
+    merged = unconfirmed = 0
+    for paragraph in list(soup.find_all("p")):
+        if paragraph.parent is None:
+            continue
+        text = paragraph.get_text("", strip=False)
+        if not LONE_PUNCTUATION.fullmatch(text) or paragraph.find(True) is not None:
+            continue
+        if paragraph.get("id") or _inside_code(paragraph) or _has_hidden(paragraph):
+            continue
+        # Merge only into the paragraph directly before it, when that one is
+        # left without an ending; never across headings, lists or other blocks.
+        mark = text.strip()
+        alternatives = ["", *(other for other in LONE_MARKS if other != mark)]
+        previous = _adjacent_paragraph(paragraph, forward=False)
+        following = _adjacent_paragraph(paragraph, forward=True)
+        if previous is not None and not SENTENCE_END.search(previous.get_text("", strip=False)):
+            after = following.get_text("", strip=False) if following is not None else ""
+            if evidence.confirms(previous.get_text("", strip=False), mark, after, alternatives):
+                previous.append(soup.new_string(mark))
+                paragraph.decompose()
+                merged += 1
+            else:
+                unconfirmed += 1
+            continue
+        # Docling sometimes lifts the full stop after a dialogue tag ("”母亲说。“")
+        # into its own block; reinsert it only when the gap is unambiguous.
+        if following is None:
+            continue
+        gaps = [
+            (node, match)
+            for node in _visible_strings(following)
+            if not _inside_code(node)
+            for match in DIALOGUE_GAP.finditer(str(node))
+        ]
+        if len(gaps) != 1:
+            continue
+        node, match = gaps[0]
+        value = str(node)
+        # Read the gap with the whole block around it, as the dashes are.
+        strings = _visible_strings(following)
+        position = next(index for index, other in enumerate(strings) if other is node)
+        before_node = "".join(str(other) for other in strings[:position])
+        after_node = "".join(str(other) for other in strings[position + 1 :])
+        if not evidence.confirms(
+            before_node + value[: match.end(1)], mark, value[match.end(1) :] + after_node, alternatives
+        ):
+            unconfirmed += 1
+            continue
+        node.replace_with(soup.new_string(value[: match.end(1)] + mark + value[match.end(1) :]))
+        paragraph.decompose()
+        merged += 1
+    return merged, unconfirmed
+
+
+def _restore_block_quotes(soup: Any, evidence: TextLayerEvidence) -> Tuple[int, int]:
+    quotes = unconfirmed = 0
+    for block in _restore_blocks(soup):
+        if any(_inside_code(node) and str(node).strip() for node in _visible_strings(block)):
+            # Leaving inline code out would splice the text around it into a
+            # context the book never has ("示例文本""供读者"), so such a block
+            # keeps its quotes as Docling left them.
+            continue
+        text_nodes = _visible_strings(block)
+        restored, skipped = _restore_quotes(soup, text_nodes, evidence)
+        quotes += restored
+        unconfirmed += skipped
+    return quotes, unconfirmed
+
+
 def enrich_html(
     html: str,
     document: Mapping[str, Any],
     outline: Sequence[Mapping[str, Any]],
     fallback_definitions: Optional[Mapping[int, str]] = None,
     expected_reference_counts: Optional[Mapping[int, int]] = None,
+    text_layer: Optional[str] = None,
 ) -> Tuple[str, Dict[str, int]]:
     from bs4 import BeautifulSoup
 
@@ -659,6 +1080,7 @@ def enrich_html(
         ".kindle-footnote{margin:.6em 0;}"
     )
     soup.head.append(semantic_style)
+    punctuation_metrics = _restore_cjk_punctuation(soup, text_layer)
     source_outline_entries = len(outline)
     effective_outline = list(outline) if outline else _derived_outline(document)
     mapped, generated, title_matched, page_start_anchors, mapped_tags = _map_outline(
@@ -693,6 +1115,7 @@ def enrich_html(
             1 for item in effective_outline if item.get("page_resolution") == "interpolated"
         ),
         **note_metrics,
+        **punctuation_metrics,
     }
     return str(soup), metrics
 
@@ -706,6 +1129,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--fallback-definitions", type=Path)
     parser.add_argument("--expected-reference-counts", type=Path)
+    parser.add_argument("--text-layer", type=Path, help="Plain text of the PDF's own text layer.")
     args = parser.parse_args()
     html = args.html.read_text(encoding="utf-8")
     document = json.loads(args.document.read_text(encoding="utf-8"))
@@ -718,8 +1142,9 @@ def main() -> int:
     if args.expected_reference_counts is not None:
         raw_counts = json.loads(args.expected_reference_counts.read_text(encoding="utf-8"))
         expected_reference_counts = {int(number): int(count) for number, count in raw_counts.items()}
+    text_layer = args.text_layer.read_text(encoding="utf-8") if args.text_layer is not None else None
     enriched, metrics = enrich_html(
-        html, document, outline, fallback_definitions, expected_reference_counts
+        html, document, outline, fallback_definitions, expected_reference_counts, text_layer
     )
     args.output.write_text(enriched, encoding="utf-8")
     args.report.write_text(json.dumps(metrics, ensure_ascii=False, sort_keys=True), encoding="utf-8")
