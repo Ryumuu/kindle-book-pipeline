@@ -22,7 +22,9 @@
 flowchart LR
     A["🔍 Multi-source search<br/>book-search"] --> B["⚖️ Compare editions<br/>format / year / size"]
     B --> C["📥 Download"]
-    C --> D["📐 Convert and lay out for e-ink<br/>ebook-to-kindle"]
+    C --> T["🌐 Whole-book translation (optional)<br/>ebook-translate"]
+    T --> D["📐 Convert and lay out for e-ink<br/>ebook-to-kindle"]
+    C --> D
     D --> E["🚀 Push to Kindle<br/>browser / email"]
 ```
 
@@ -31,6 +33,7 @@ flowchart LR
 | Module | Purpose | Runs on |
 | :--- | :--- | :--- |
 | [`book-search/`](book-search/SKILL.md) | Search, compare and download ebooks across multiple sources. Sources are plugins, so you can add your own | Any OS, Python 3.9+, standard library only |
+| [`ebook-translate/`](ebook-translate/SKILL.md) | Split foreign-language EPUBs for Agent translation; build a Chinese edition by default, or a paragraph-by-paragraph English/Chinese edition with `pack --bilingual` | Python 3.9+; Calibre required for compilation |
 | [`ebook-to-kindle/`](ebook-to-kindle/SKILL.md) | Converts PDF / EPUB / DOCX / HTML / TXT / Markdown offline into AZW3 (or MOBI6, EPUB) tuned for Kindle Paperwhite, with automatic quality checks | Apple Silicon Mac, macOS 14+ |
 | `ebook-to-kindle/scripts/send_to_kindle*.py` | Pushes the finished book to your Kindle: browser upload or the Send to Kindle email address | Browser mode needs macOS + the Ego browser (`ego-browser` CLI); email mode works on macOS / Linux (untested on Windows) |
 
@@ -121,11 +124,12 @@ python3 ebook-to-kindle/scripts/send_to_kindle_email.py ~/Documents/KindleBooks/
 
 ## Use it with an AI agent
 
-Both directories are standard agent Skills (each contains a `SKILL.md`). For example, in Claude Code:
+All three modules are standard agent Skills (each contains a `SKILL.md`). For example, in Claude Code:
 
 ```bash
 mkdir -p ~/.claude/skills
 ln -s "$PWD/book-search" ~/.claude/skills/book-search
+ln -s "$PWD/ebook-translate" ~/.claude/skills/ebook-translate
 python3 ebook-to-kindle/scripts/install_skill.py --target ~/.claude/skills/ebook-to-kindle
 ```
 
@@ -143,6 +147,10 @@ kindle-book-pipeline/
 │       ├── book_search.py          # CLI entry point
 │       └── booksearch/             # Provider base class, plugin loader, download helpers
 │           └── providers/          # Built-in sources: gutenberg, zlibrary
+├── ebook-translate/
+│   ├── SKILL.md                    # Agent instructions: unpack, faithful translation, pack
+│   └── scripts/
+│       └── ebook_translate.py      # CLI tool (unpack / status / pack)
 └── ebook-to-kindle/
     ├── SKILL.md                    # Agent usage: convert, verify, push
     ├── assets/                     # PW2 stylesheet and pinned Docling dependencies

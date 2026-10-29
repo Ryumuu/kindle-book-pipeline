@@ -29,7 +29,7 @@ description: "多平台检索、对比并下载电子书（内置 Project Gutenb
    * **Phase 1 检索**：拿到 3~8 个候选的完整元数据（可跨平台）。
    * **Phase 2 对比**：按下方维度对比，向用户列出对比表并说明推荐理由。
    * **Phase 3 下载**：对比后（或用户指定编号）才下载。
-   * **Phase 4 后处理**：大纲、导读、转 Markdown 或推送 Kindle。
+   * **Phase 4 后处理**：大纲、导读、转 Markdown、全书翻译 (ebook-translate) 或推送 Kindle。
 
 ---
 
@@ -80,7 +80,11 @@ python3 scripts/book_search.py download <ref> [--out-dir <目录>]
 ### 5. 后处理
 1. **大纲与导读**：EPUB 可读 NCX/nav 提取目录树。
 2. **转 Markdown**：如有 Markdown 转换工具可用，转重点章节做笔记。
-3. **推送 Kindle**：联动本仓库的 `ebook-to-kindle` 技能转 AZW3 或推送（成品默认存到 `~/Documents/KindleBooks`）。
+3. **外文整书翻译**：若下载为外文书籍且需中文精排，联动本仓库的 `ebook-translate` 进行分章高保真断点续译：
+   ```bash
+   python3 ebook-translate/scripts/ebook_translate.py unpack "<下载文件路径>"
+   ```
+4. **推送 Kindle**：联动本仓库的 `ebook-to-kindle` 技能转 AZW3 或推送（成品默认存到 `~/Documents/KindleBooks`）。
 
 ---
 

@@ -20,7 +20,9 @@
 flowchart LR
     A["🔍 多平台找书<br/>book-search"] --> B["⚖️ 对比版本<br/>格式/年份/体积"]
     B --> C["📥 下载"]
-    C --> D["📐 转换与墨水屏排版<br/>ebook-to-kindle"]
+    C --> T["🌐 全书翻译 (可选)<br/>ebook-translate"]
+    T --> D["📐 转换与墨水屏排版<br/>ebook-to-kindle"]
+    C --> D
     D --> E["🚀 推送到 Kindle<br/>浏览器 / 邮件"]
 ```
 
@@ -29,6 +31,7 @@ flowchart LR
 | 模块 | 作用 | 运行环境 |
 | :--- | :--- | :--- |
 | [`book-search/`](book-search/SKILL.md) | 多平台检索、对比、下载电子书。找书平台是插件，可以自己加 | 任意系统，Python 3.9+，只用标准库 |
+| [`ebook-translate/`](ebook-translate/SKILL.md) | 外语 EPUB 分章、由 Agent 翻译后生成默认中文精排版，或用 `pack --bilingual` 生成逐段中英对照版 | Python 3.9+；编译需 Calibre |
 | [`ebook-to-kindle/`](ebook-to-kindle/SKILL.md) | 把 PDF / EPUB / DOCX / HTML / TXT / Markdown 离线转成适合 Kindle Paperwhite 的 AZW3（或 MOBI6、EPUB），带自动质量检查 | Apple Silicon Mac，macOS 14+ |
 | `ebook-to-kindle/scripts/send_to_kindle*.py` | 把成品推送到 Kindle：浏览器上传或 Send to Kindle 邮箱 | 浏览器模式需 macOS + Ego 浏览器（`ego-browser` 命令行）；邮件模式在 macOS / Linux 上可用（Windows 未测试） |
 
@@ -119,11 +122,12 @@ python3 ebook-to-kindle/scripts/send_to_kindle_email.py ~/Documents/KindleBooks/
 
 ## 交给 AI Agent 使用
 
-两个目录都是标准的 Agent Skill（含 `SKILL.md`）。例如在 Claude Code 中：
+三个模块都是标准的 Agent Skill（含 `SKILL.md`）。例如在 Claude Code 中：
 
 ```bash
 mkdir -p ~/.claude/skills
 ln -s "$PWD/book-search" ~/.claude/skills/book-search
+ln -s "$PWD/ebook-translate" ~/.claude/skills/ebook-translate
 python3 ebook-to-kindle/scripts/install_skill.py --target ~/.claude/skills/ebook-to-kindle
 ```
 
@@ -141,6 +145,10 @@ kindle-book-pipeline/
 │       ├── book_search.py          # 命令行入口
 │       └── booksearch/             # Provider 基类、插件加载、下载工具
 │           └── providers/          # 内置平台：gutenberg、zlibrary
+├── ebook-translate/
+│   ├── SKILL.md                    # Agent 用法：分章解包、高保真逐章断点续译
+│   └── scripts/
+│       └── ebook_translate.py      # CLI 工具（unpack / status / pack）
 └── ebook-to-kindle/
     ├── SKILL.md                    # Agent 用法：转换、验收、推送
     ├── assets/                     # PW2 样式与 Docling 依赖锁定
