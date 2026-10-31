@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote, unquote, urlsplit
 
-DEFAULT_OUTPUT_DIR = Path.home() / "Documents" / "KindleBooks"
+from pipeline_setup import default_output_dir
+
+DEFAULT_OUTPUT_DIR = default_output_dir()
 DEFAULT_WORKSPACE_BASE = Path(os.path.expanduser("~/.local/share/ebook-translate-workspaces"))
 
 def find_calibre_convert() -> Optional[Path]:
@@ -782,7 +784,7 @@ def main():
     # pack
     p_pack = subparsers.add_parser("pack", help="Assemble translated chapters into EPUB and AZW3")
     p_pack.add_argument("--workspace", required=True, help="Workspace directory")
-    p_pack.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Output directory")
+    p_pack.add_argument("--output-dir", default=str(default_output_dir()), help="Output directory (CLI > $EBOOK_TO_KINDLE_OUTPUT_DIR > profile.json > ~/Documents/KindleBooks)")
     p_pack.add_argument("--formats", default="epub,azw3", help="Output formats (epub,azw3,all)")
     p_pack.add_argument("--allow-partial", action="store_true", help="Allow compiling partial book")
     p_pack.add_argument("--bilingual", action="store_true", help="Build Chinese-English edition from Agent-authored [EN] original / Chinese paragraph pairs")

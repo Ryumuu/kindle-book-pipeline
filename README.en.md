@@ -28,6 +28,26 @@ flowchart LR
     D --> E["🚀 Push to Kindle<br/>browser / email"]
 ```
 
+## First time? Three things to tell your AI
+
+1. **Have your AI install the three Skills.** Paste this into Claude Code, Codex, or another AI that can work with local files. You will get callable search, translation and conversion Skills:
+
+   > Please install https://github.com/Ryumuu/kindle-book-pipeline and connect all three Skills using the README's “Use it with an AI agent” section. Check that my system is supported and preserve existing settings. Explain any runtime downloads and ask before installing them.
+
+2. **Tell it what you want to do:**
+
+   > Start using kindle-book-pipeline.
+
+   The AI asks only the questions needed for finding, converting, sending or translating books, then saves non-sensitive preferences locally. Enter passwords and app passwords into account configuration yourself; do not send them to the AI.
+
+3. **Get a first book you can open:**
+
+   > Walk me through Project Gutenberg's public-domain Pride and Prejudice (gutenberg:1342). Tell me where the file is and how to open it.
+
+   This no-login example is an English EPUB. Search-only users get the EPUB; if you choose conversion and the runtime is ready, the AI also builds an AZW3. First-time conversion needs about 3GB of runtime files; the AI asks before downloading them. Whole-book translation uses additional model quota and time. Without a Kindle, you can open EPUBs in a desktop reader.
+
+Stuck? Say **“Run a health check”** (“体检一下”). Say “Change settings” (“改设置”) to adjust preferences. The [onboarding guide](book-search/references/onboarding.md) also explains how to start over.
+
 ## What it does
 
 | Module | Purpose | Runs on |
@@ -93,7 +113,7 @@ python3 ebook-to-kindle/scripts/ebook_to_kindle.py convert book.pdf --formats az
 
 `--formats azw3,epub` produces both AZW3 (for copying onto the Kindle over USB) and EPUB (for wireless push).
 
-- Output goes to `~/Documents/KindleBooks` by default; change it with `--output-dir` or the `EBOOK_TO_KINDLE_OUTPUT_DIR` environment variable.
+- Conversion and translation output directories use this order: `--output-dir` > `EBOOK_TO_KINDLE_OUTPUT_DIR` > the profile's `output_dir` > `~/Documents/KindleBooks`.
 - The whole conversion runs offline; third-party tools run inside a macOS sandbox with the network disabled.
 - For more options (workspace reuse, PDF modes, metadata, note translation), see [ebook-to-kindle/SKILL.md](ebook-to-kindle/SKILL.md).
 
@@ -107,7 +127,7 @@ Amazon's Send to Kindle (web and email) does not accept AZW3/MOBI, so what gets 
 python3 ebook-to-kindle/scripts/send_to_kindle.py ~/Documents/KindleBooks/book.epub --domain amazon.com --device "Paperwhite"
 ```
 
-- `--domain` is your Amazon site (amazon.com, amazon.co.jp, amazon.co.uk, etc.); you can also set the `KINDLE_AMAZON_DOMAIN` environment variable. If neither is given, it defaults to `amazon.co.jp`.
+- `--domain` is your Amazon site (amazon.com, amazon.co.jp, amazon.co.uk, etc.). Precedence: CLI > `KINDLE_AMAZON_DOMAIN` > the profile's `amazon_domain` > `amazon.co.jp`. Device names use `--device` > `KINDLE_DEVICE_NAME` > the profile's `kindle_device_name` > no specified device.
 - After uploading, the script tries to identify **the one document that was just added** and pushes only that to the device you specified (the identification method has limits; see below). If your account has several devices and you did not pass `--device`, or the name matches more than one device, it only uploads, does not push, and lists the device names for you to choose from.
 - `DELIVERY_REQUESTED` in the result means a delivery request has been sent to Amazon; the device receives the book once it is online.
 - On first use, when the library is still empty, the script cannot tell new documents from old ones, so it only uploads and does not push (the device will also receive the book on its next sync). If the page language is also neither Chinese nor English, the script cannot even confirm that the upload succeeded and reports `UPLOAD_UNCONFIRMED`.
@@ -182,6 +202,7 @@ All personal information stays on your machine and never enters the repo:
 
 | Purpose | Location |
 | :--- | :--- |
+| First-use preferences (no credentials) | `~/.config/kindle-book-pipeline/profile.json` (permissions 600); override the path with `KINDLE_BOOK_PIPELINE_PROFILE`. Use `pipeline_setup.py status / save / doctor / reset` to view, edit, check or start over |
 | Z-Library login | Environment variables `ZLIB_REMIX_USERID` / `ZLIB_REMIX_USERKEY`, or `~/.config/zlibrary/config.json` (permissions 600) |
 | Kindle email push | `~/.config/kindle/email_config.json` (permissions 600); the password can also be supplied via `KINDLE_SMTP_PASS` |
 | Custom sources | `~/.config/kindle-book-pipeline/providers/*.py`, or `$BOOK_SEARCH_PROVIDER_PATH` |

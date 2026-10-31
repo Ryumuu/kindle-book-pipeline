@@ -1,6 +1,6 @@
 ---
 name: ebook-to-kindle
-description: "制作 Paperwhite 2 电子书或按用户要求发送到 Kindle 时使用；不用于下载或去除 DRM。"
+description: "制作 Paperwhite 2 电子书或按用户要求发送到 Kindle 时使用；不用于下载或去除 DRM。用户第一次用或说「开始用 kindle-book-pipeline」时先走首次使用向导。"
 ---
 
 <!-- Detailed scope moved from catalog metadata. -->
@@ -9,6 +9,11 @@ Use when: user asks to convert a local PDF, DOCX, HTML, TXT, Markdown, or EPUB f
 
 
 # Ebook to Kindle
+
+## 首次使用
+
+每次调用先在本 Skill 目录运行 `python3 scripts/pipeline_setup.py status --json`，按[首次使用向导](references/onboarding.md)处理：已有设置就一句话提醒后继续；没有设置先按用途问卷，用户明确跳过可用内置默认。「改设置」「体检一下」也走该向导。
+
 
 遇到“自动检查通过但仍不好读”、扫描书净化或批量交付时，先读 [真实阅读验收](references/actual-reading-acceptance.md)，用代表样本核对阅读结果，再批量处理；现有设备批准条件保持不变。
 

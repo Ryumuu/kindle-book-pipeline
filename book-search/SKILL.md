@@ -1,9 +1,14 @@
 ---
 name: book-search
-description: "多平台检索、对比并下载电子书（内置 Project Gutenberg 与 Z-Library，可自行添加平台），并做后续研读处理（提取大纲、转 Markdown、推送 Kindle）时使用。"
+description: "多平台检索、对比并下载电子书（内置 Project Gutenberg 与 Z-Library，可自行添加平台），并做后续研读处理（提取大纲、转 Markdown、推送 Kindle）时使用。用户第一次用、说「开始用 kindle-book-pipeline」「改设置」「体检一下」时，也用本 Skill 走首次使用向导。"
 ---
 
 # 多平台找书与研读助手 (book-search)
+
+## 首次使用
+
+每次调用先在本 Skill 目录运行 `python3 scripts/pipeline_setup.py status --json`，按[首次使用向导](references/onboarding.md)处理：已有设置就一句话提醒后继续；没有设置先按用途问卷，用户明确跳过可用内置默认。「改设置」「体检一下」也走该向导。
+
 
 从 **检索 → 多版本对比甄别 → 下载 → 后处理（大纲、Markdown、推送阅读设备）** 的完整闭环。
 

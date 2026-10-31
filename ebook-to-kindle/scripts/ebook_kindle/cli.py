@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
+from pipeline_setup import default_output_dir
 from . import __version__
 from .core import SkillError, parse_formats, safe_report
 from .pipeline import ConversionRequest, convert
@@ -32,11 +33,6 @@ EXIT_CODES = {
     "WORKSPACE_BUSY": 13,
     "CONVERSION_FAILED": 10,
 }
-
-
-def default_output_dir() -> Path:
-    configured = os.environ.get("EBOOK_TO_KINDLE_OUTPUT_DIR")
-    return Path(configured).expanduser() if configured else Path.home() / "Documents" / "KindleBooks"
 
 
 def _json(payload: Dict[str, Any]) -> None:
@@ -66,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-dir",
         type=Path,
         default=default_output_dir(),
-        help="Output directory (default: $EBOOK_TO_KINDLE_OUTPUT_DIR or ~/Documents/KindleBooks).",
+        help="Output directory (CLI > $EBOOK_TO_KINDLE_OUTPUT_DIR > profile.json > ~/Documents/KindleBooks).",
     )
     conversion.add_argument(
         "--formats",

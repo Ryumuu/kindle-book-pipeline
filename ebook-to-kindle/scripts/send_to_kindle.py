@@ -17,6 +17,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from pipeline_setup import preference
+
 NODE_SCRIPT_TEMPLATE = r"""
 (async () => {
   const filePath = __FILE_PATH__;
@@ -413,7 +415,8 @@ NODE_SCRIPT_TEMPLATE = r"""
 """
 
 
-DEFAULT_DOMAIN = os.environ.get("KINDLE_AMAZON_DOMAIN", "amazon.co.jp")
+DEFAULT_DOMAIN = preference("amazon_domain", "KINDLE_AMAZON_DOMAIN", "amazon.co.jp")
+DEFAULT_DEVICE = preference("kindle_device_name", "KINDLE_DEVICE_NAME")
 SEND_TO_KINDLE_EXTENSIONS = {".epub", ".pdf", ".doc", ".docx", ".txt", ".rtf", ".htm", ".html", ".png", ".gif", ".jpg", ".jpeg", ".bmp"}
 KINDLE_ONLY_EXTENSIONS = {".azw3", ".azw", ".mobi"}
 DOMAIN_PATTERN = re.compile(r"amazon(\.[a-z]{2,3}){1,2}")
@@ -443,7 +446,7 @@ def build_node_script(
 def send_to_kindle(
     file_path: Path,
     domain: str = DEFAULT_DOMAIN,
-    device: Optional[str] = None,
+    device: Optional[str] = DEFAULT_DEVICE,
     deliver: bool = True,
     timeout: int = 180,
     method: str = "auto",
@@ -557,8 +560,8 @@ def main() -> int:
         description="Wirelessly push ebooks (EPUB, PDF, DOCX, TXT, ...) to Amazon Send to Kindle via ego-browser or e-mail. AZW3/MOBI are swapped for the sibling .epub.",
     )
     parser.add_argument("file", type=Path, help="Path to the ebook file to push.")
-    parser.add_argument("--domain", default=DEFAULT_DOMAIN, help="Amazon marketplace domain, e.g. amazon.com, amazon.co.jp, amazon.co.uk (default: $KINDLE_AMAZON_DOMAIN or amazon.co.jp).")
-    parser.add_argument("--device", help="Device to deliver to: exact name, or a part of the name that matches only one device (e.g. 'Paperwhite'). Browser method only.")
+    parser.add_argument("--domain", default=DEFAULT_DOMAIN, help="Amazon marketplace domain (CLI > $KINDLE_AMAZON_DOMAIN > profile.json > amazon.co.jp).")
+    parser.add_argument("--device", default=DEFAULT_DEVICE, help="Device name (CLI > $KINDLE_DEVICE_NAME > profile.json > no device). Exact or unique partial name; browser method only.")
     parser.add_argument("--title", help="Document title as it will appear in your Kindle library (default: file name). Used to find the upload.")
     parser.add_argument("--no-deliver", action="store_true", help="Only upload to the cloud library; skip the explicit push to a device.")
     parser.add_argument("--method", choices=["auto", "browser", "email"], default="auto", help="Delivery method: 'browser' (CDP via ego-browser), 'email' (Send to Kindle by E-mail), or 'auto' (detect environment).")

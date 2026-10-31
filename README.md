@@ -26,6 +26,26 @@ flowchart LR
     D --> E["🚀 推送到 Kindle<br/>浏览器 / 邮件"]
 ```
 
+## 第一次用？跟 AI 说这三句话
+
+1. **先让 AI 装好三个模块。** 把下面这段话复制给 Claude Code、Codex 等能操作本机文件的 AI；装好后，你会得到可调用的找书、翻译和转书 Skill：
+
+   > 请帮我安装 https://github.com/Ryumuu/kindle-book-pipeline ，按 README「交给 AI Agent 使用」一节接入三个 Skill。先确认我的系统是否支持，不覆盖已有配置；下载运行环境前先告诉我需要什么并征得同意。
+
+2. **让 AI 记住你要做什么。** 对它说：
+
+   > 开始用 kindle-book-pipeline
+
+   AI 会问你是找书、转书、发送还是翻译，只问相关问题，并把非敏感偏好保存在本机。密码和授权码由你自己填进账号配置，不用发给 AI。
+
+3. **拿到第一本能打开的书。** 对它说：
+
+   > 先用古腾堡公版《傲慢与偏见》（gutenberg:1342）带我跑通一次，告诉我文件在哪、怎么打开。
+
+   免登录示例是英文 EPUB；只找书就交付 EPUB，选了转书且环境就绪就继续做 AZW3。首次转书需准备约 3GB 运行环境，下载前 AI 会先征得同意。整书翻译另花模型额度和时间；没有 Kindle 也可在电脑阅读器打开 EPUB。
+
+卡住了就对 AI 说：**「体检一下」**。以后说「改设置」可以调整；[首次使用向导](book-search/references/onboarding.md)也说明了如何重来。
+
 ## 能做什么
 
 | 模块 | 作用 | 运行环境 |
@@ -91,7 +111,7 @@ python3 ebook-to-kindle/scripts/ebook_to_kindle.py convert book.pdf --formats az
 
 `--formats azw3,epub` 同时出 AZW3（USB 拷进 Kindle 用）和 EPUB（无线推送用）。
 
-- 成品默认存到 `~/Documents/KindleBooks`，可用 `--output-dir` 或环境变量 `EBOOK_TO_KINDLE_OUTPUT_DIR` 改。
+- 转书与翻译编译的成品目录按 `--output-dir` > `EBOOK_TO_KINDLE_OUTPUT_DIR` > profile 的 `output_dir` > `~/Documents/KindleBooks` 选取。
 - 转换全程离线，第三方工具都在 macOS 沙箱里禁网运行。
 - 更多参数（工作区复用、PDF 模式、元数据、注释翻译）见 [ebook-to-kindle/SKILL.md](ebook-to-kindle/SKILL.md)。
 
@@ -105,7 +125,7 @@ python3 ebook-to-kindle/scripts/ebook_to_kindle.py convert book.pdf --formats az
 python3 ebook-to-kindle/scripts/send_to_kindle.py ~/Documents/KindleBooks/book.epub --domain amazon.com --device "Paperwhite"
 ```
 
-- `--domain` 填你的亚马逊站点（amazon.com、amazon.co.jp、amazon.co.uk 等），也可以设环境变量 `KINDLE_AMAZON_DOMAIN`；都不写时默认 `amazon.co.jp`。
+- `--domain` 填你的亚马逊站点（amazon.com、amazon.co.jp、amazon.co.uk 等）；优先级为命令行 > `KINDLE_AMAZON_DOMAIN` > profile 的 `amazon_domain` > `amazon.co.jp`。设备名依次取 `--device`、`KINDLE_DEVICE_NAME`、profile 的 `kindle_device_name`，都不写则不指定设备。
 - 上传后会尝试认出**这次新增的那一本**，只把它推到你指定的设备（识别方法有局限，见下）；账号下有多台设备又没写 `--device`、或名字能对上好几台时，只上传、不推送，并列出设备名供你选择。
 - 结果里的 `DELIVERY_REQUESTED` 表示已向亚马逊发出传送请求，设备联网后收到。
 - 首次使用、书库还是空的时，脚本分不清新旧文档，只上传不推送（设备下次同步也会收到）；如果页面语言又不是中文/英文，脚本连上传成功都确认不了，会报 `UPLOAD_UNCONFIRMED`。
@@ -180,6 +200,7 @@ cd ebook-to-kindle && python3 -m unittest discover -s evals -p "test_*.py"
 
 | 用途 | 位置 |
 | :--- | :--- |
+| 首次使用偏好（不含凭证） | `~/.config/kindle-book-pipeline/profile.json`（600 权限），可用 `KINDLE_BOOK_PIPELINE_PROFILE` 改路径；`pipeline_setup.py status / save / doctor / reset` 查看、修改、体检、重来 |
 | Z-Library 登录 | 环境变量 `ZLIB_REMIX_USERID` / `ZLIB_REMIX_USERKEY`，或 `~/.config/zlibrary/config.json`（600 权限） |
 | Kindle 邮件推送 | `~/.config/kindle/email_config.json`（600 权限），密码也可用 `KINDLE_SMTP_PASS` |
 | 自定义找书平台 | `~/.config/kindle-book-pipeline/providers/*.py`，或 `$BOOK_SEARCH_PROVIDER_PATH` |
