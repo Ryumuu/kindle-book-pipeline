@@ -28,11 +28,11 @@ flowchart LR
 
 ## 第一次用？跟 AI 说这三句话
 
-1. **先让 AI 装好三个模块。** 把下面这段话复制给 Claude Code、Codex 等能操作本机文件的 AI；装好后，你会得到可调用的找书、翻译和转书 Skill：
+1. **先让 AI 装好你要的模块。** 三个模块可以只装一个，也可以都装。把下面这段话复制给 Claude Code、Codex 等能操作本机文件的 AI：
 
-   > 请帮我安装 https://github.com/Ryumuu/kindle-book-pipeline ，按 README「交给 AI Agent 使用」一节接入三个 Skill。先确认我的系统是否支持，不覆盖已有配置；下载运行环境前先告诉我需要什么并征得同意。
+   > 请帮我安装 https://github.com/Ryumuu/kindle-book-pipeline ，照 README「交给 AI Agent 使用」一节做：先问我要装哪些模块，装好后直接开始首次使用问卷。先确认我的系统是否支持，不覆盖已有配置；下载运行环境前先告诉我需要什么并征得同意。
 
-2. **让 AI 记住你要做什么。** 对它说：
+2. **让 AI 记住你要做什么。** AI 装完会自己开始问；没开始，或者换了新会话，就对它说：
 
    > 开始用 kindle-book-pipeline
 
@@ -142,16 +142,30 @@ python3 ebook-to-kindle/scripts/send_to_kindle_email.py ~/Documents/KindleBooks/
 
 ## 交给 AI Agent 使用
 
-三个模块都是标准的 Agent Skill（含 `SKILL.md`）。例如在 Claude Code 中：
+三个模块都是标准的 Agent Skill（各带 `SKILL.md`），**可以只装一个，也可以都装**：
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/book-search" ~/.claude/skills/book-search
-ln -s "$PWD/ebook-translate" ~/.claude/skills/ebook-translate
-python3 ebook-to-kindle/scripts/install_skill.py --target ~/.claude/skills/ebook-to-kindle
-```
+| 只装这个 | 单独就能做 | 要配合别的模块才能做 |
+| :--- | :--- | :--- |
+| `book-search` | 找书、对比版本、下载（任意系统） | 转成 Kindle 格式、推送到 Kindle：需要 `ebook-to-kindle` |
+| `ebook-to-kindle` | 把手上的书转成 Kindle 格式、推送到 Kindle（Apple Silicon Mac） | 无 |
+| `ebook-translate` | 把外文 EPUB 分章翻成中文 | 编译成书要 Calibre：装 `ebook-to-kindle` 的运行环境，或自己装 Calibre 让 `ebook-convert` 在 PATH 里；`--push-kindle` 需要完整仓库 |
 
-`install_skill.py` 默认装到 `~/.agents/skills/ebook-to-kindle`，也可装到 `~/.claude/skills` 或 `~/.codex/skills`。之后对 Agent 说「帮我找《某本书》的 EPUB，挑最好的版本，转成 Kindle 格式发到我的 Paperwhite」即可。`book-search` 的 Skill 会要求 Agent 先列出版本对比表再下载，避免浪费下载额度。
+### 给 AI Agent 的安装说明（Agent 请照这三步做）
+
+1. **先问用户要装哪些模块**：三个都装 / 只找书 / 只转书 / 只翻译。用上表说明每个能做什么、缺什么，不要默认全装。
+2. **只装用户选的**。在仓库根目录执行（Claude Code 的示例；Codex 把目标换成 `~/.agents/skills` 或 `~/.codex/skills`）：
+
+   ```bash
+   mkdir -p ~/.claude/skills
+   ln -s "$PWD/book-search" ~/.claude/skills/book-search          # 找书
+   ln -s "$PWD/ebook-translate" ~/.claude/skills/ebook-translate  # 翻译
+   python3 ebook-to-kindle/scripts/install_skill.py --target ~/.claude/skills/ebook-to-kindle  # 转书和推送
+   ```
+
+   目标位置已有同名 Skill 时，先告诉用户，不要覆盖。`install_skill.py` 不写 `--target` 时默认装到 `~/.agents/skills/ebook-to-kindle`。
+3. **装好后不要停在「装好了」，马上开始首次使用问卷**：在刚装好的模块目录运行 `python3 scripts/pipeline_setup.py status --json`，再按该模块的 `references/onboarding.md` 走：先问用户想做什么，只追问相关的问题，保存偏好，体检，最后用《傲慢与偏见》示例跑通一次。装软件或下载约 3GB 的运行环境前，先征得用户同意；密码、授权码让用户自己填，不在聊天里收。
+
+装好以后，用户可以直接说「帮我找《某本书》的 EPUB，挑最好的版本，转成 Kindle 格式发到我的 Paperwhite」。`book-search` 会先列出版本对比表再下载，避免浪费下载额度。
 
 ## 目录结构
 

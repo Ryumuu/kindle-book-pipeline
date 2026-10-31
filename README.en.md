@@ -30,11 +30,11 @@ flowchart LR
 
 ## First time? Three things to tell your AI
 
-1. **Have your AI install the three Skills.** Paste this into Claude Code, Codex, or another AI that can work with local files. You will get callable search, translation and conversion Skills:
+1. **Have your AI install the modules you want.** You can install just one of the three, or all of them. Paste this into Claude Code, Codex, or another AI that can work with local files:
 
-   > Please install https://github.com/Ryumuu/kindle-book-pipeline and connect all three Skills using the README's “Use it with an AI agent” section. Check that my system is supported and preserve existing settings. Explain any runtime downloads and ask before installing them.
+   > Please install https://github.com/Ryumuu/kindle-book-pipeline following the README's “Use it with an AI agent” section: first ask me which modules I want, and start the first-run questionnaire right after installing. Check that my system is supported and preserve existing settings. Explain any runtime downloads and ask before installing them.
 
-2. **Tell it what you want to do:**
+2. **Tell it what you want to do.** The AI starts asking on its own after installing; if it doesn't, or in a new session, say:
 
    > Start using kindle-book-pipeline.
 
@@ -144,16 +144,30 @@ python3 ebook-to-kindle/scripts/send_to_kindle_email.py ~/Documents/KindleBooks/
 
 ## Use it with an AI agent
 
-All three modules are standard agent Skills (each contains a `SKILL.md`). For example, in Claude Code:
+All three modules are standard agent Skills (each contains a `SKILL.md`). **You can install just one, or all three:**
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/book-search" ~/.claude/skills/book-search
-ln -s "$PWD/ebook-translate" ~/.claude/skills/ebook-translate
-python3 ebook-to-kindle/scripts/install_skill.py --target ~/.claude/skills/ebook-to-kindle
-```
+| Install only this | Works on its own for | Needs another module for |
+| :--- | :--- | :--- |
+| `book-search` | Searching, comparing editions, downloading (any OS) | Converting to Kindle format and pushing to Kindle: needs `ebook-to-kindle` |
+| `ebook-to-kindle` | Converting your own books to Kindle format and pushing them to Kindle (Apple Silicon Mac) | Nothing |
+| `ebook-translate` | Splitting a foreign-language EPUB into chapters for translation into Chinese | Building the book needs Calibre: install the `ebook-to-kindle` runtime, or install Calibre yourself so `ebook-convert` is on PATH; `--push-kindle` needs the full repository |
 
-`install_skill.py` installs to `~/.agents/skills/ebook-to-kindle` by default and can also install to `~/.claude/skills` or `~/.codex/skills`. After that, just tell the agent something like "Find me an EPUB of *Pride and Prejudice*, pick the best edition, convert it to Kindle format and send it to my Paperwhite." The `book-search` Skill requires the agent to list an edition comparison table before downloading, so you don't waste download quota.
+### Install instructions for the AI agent (agent: follow these three steps)
+
+1. **Ask the user which modules to install**: all three / search only / convert only / translate only. Use the table above to explain what each can and cannot do. Do not install everything by default.
+2. **Install only what the user chose.** From the repository root (Claude Code example; for Codex use `~/.agents/skills` or `~/.codex/skills` as the target):
+
+   ```bash
+   mkdir -p ~/.claude/skills
+   ln -s "$PWD/book-search" ~/.claude/skills/book-search          # search
+   ln -s "$PWD/ebook-translate" ~/.claude/skills/ebook-translate  # translate
+   python3 ebook-to-kindle/scripts/install_skill.py --target ~/.claude/skills/ebook-to-kindle  # convert and push
+   ```
+
+   If a Skill with the same name already exists at the target, tell the user instead of overwriting it. Without `--target`, `install_skill.py` installs to `~/.agents/skills/ebook-to-kindle`.
+3. **Don't stop at "installed" — start the first-run questionnaire right away**: in the module you just installed, run `python3 scripts/pipeline_setup.py status --json`, then follow that module's `references/onboarding.md`: ask what the user wants to do, ask only the related questions, save preferences, run the check, and finish with one run of the *Pride and Prejudice* sample. Ask before installing software or downloading the ~3 GB runtime; let users enter passwords and app codes themselves, never through chat.
+
+After that, the user can just say something like "Find me an EPUB of *Pride and Prejudice*, pick the best edition, convert it to Kindle format and send it to my Paperwhite." The `book-search` Skill requires the agent to list an edition comparison table before downloading, so you don't waste download quota.
 
 ## Repository layout
 
