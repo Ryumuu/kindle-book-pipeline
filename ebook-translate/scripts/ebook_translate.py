@@ -352,8 +352,15 @@ def inspect_status(workspace: Path):
         print(f"Error: manifest.json not found in {workspace}")
         sys.exit(1)
 
-    data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    chapters = data.get("chapters", [])
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if (not isinstance(data, dict) or not isinstance(data.get("chapters"), list)
+                or any(not isinstance(ch, dict) for ch in data["chapters"])):
+            raise ValueError
+    except (ValueError, UnicodeError):
+        print("工作区清单损坏，可以重新解包新建工作区，已有译稿保留在原目录。")
+        sys.exit(1)
+    chapters = data["chapters"]
     
     done_count = 0
     done_words = 0

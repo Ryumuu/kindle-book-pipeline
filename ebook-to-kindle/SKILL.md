@@ -1,6 +1,6 @@
 ---
 name: ebook-to-kindle
-description: "制作 Paperwhite 2 电子书或按用户要求发送到 Kindle 时使用；不用于下载或去除 DRM。用户第一次用或说「开始用 kindle-book-pipeline」时先走首次使用向导。"
+description: "制作 Paperwhite 2 电子书或按用户要求发送到 Kindle 时使用；不用于下载或去除 DRM。用户第一次用、说「开始用 kindle-book-pipeline」「改设置」「体检一下」时先走首次使用向导。"
 ---
 
 <!-- Detailed scope moved from catalog metadata. -->

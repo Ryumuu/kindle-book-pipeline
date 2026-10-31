@@ -27,6 +27,7 @@ ENV/
 .env
 .env.*
 email_config.json
+profile.json
 config.json
 *.pem
 *.key

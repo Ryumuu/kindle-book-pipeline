@@ -78,7 +78,7 @@ def read_profile(warn: bool = True) -> Dict[str, Any]:
         if not path.exists():
             return {}
         return validate_profile(json.loads(path.read_text(encoding="utf-8")))
-    except (OSError, ValueError, UnicodeError):
+    except (OSError, ValueError, UnicodeError, RuntimeError):
         if warn:
             print("提示：偏好文件损坏、字段非法或无法读取，已按没有设置处理；请运行设置向导修复或 reset 重来。", file=sys.stderr)
         return {}
@@ -86,8 +86,10 @@ def read_profile(warn: bool = True) -> Dict[str, Any]:
 
 def preference(key: str, env: str, default: Any = None) -> Any:
     """命令行交给 argparse 覆盖；其余依次为环境变量、偏好、内置值。"""
-    profile = read_profile()
-    return os.environ.get(env) or profile.get(key, default)
+    value = os.environ.get(env)
+    if value:
+        return value
+    return read_profile().get(key, default)
 
 
 def default_output_dir() -> Path:
@@ -122,7 +124,8 @@ def save_profile(assignments) -> Dict[str, Any]:
     fd, temporary = tempfile.mkstemp(prefix=".profile-", dir=str(path.parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            os.fchmod(handle.fileno(), 0o600)
+            if hasattr(os, "fchmod"):
+                os.fchmod(handle.fileno(), 0o600)
             json.dump(data, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
         os.replace(temporary, path)
@@ -303,7 +306,8 @@ def main(argv=None) -> int:
             payload = status()
         elif args.command == "save":
             save_profile([item for group in args.set for item in group])
-            payload = {**status(), "message": "设置已合并保存，文件权限为 600。请按选中路线运行 doctor。"}
+            permissions = "文件权限为 600。" if hasattr(os, "fchmod") else "当前平台未设置 600 权限。"
+            payload = {**status(), "message": "设置已合并保存，" + permissions + "请按选中路线运行 doctor。"}
         elif args.command == "doctor":
             payload = doctor(args.route, read_profile())
         else:

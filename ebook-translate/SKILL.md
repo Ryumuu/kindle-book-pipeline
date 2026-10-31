@@ -1,6 +1,6 @@
 ---
 name: ebook-translate
-description: "外语电子书（EPUB）全书高保真翻译与精排制作助手。支持解包分章、断点续译、默认中文精排及可选中英对照，并自动编译为 EPUB/AZW3 归档或推送到 Kindle。用户第一次用或说「开始用 kindle-book-pipeline」时先走首次使用向导。"
+description: "外语电子书（EPUB）全书高保真翻译与精排制作助手。支持解包分章、断点续译、默认中文精排及可选中英对照，并自动编译为 EPUB/AZW3 归档或推送到 Kindle。用户第一次用、说「开始用 kindle-book-pipeline」「改设置」「体检一下」时先走首次使用向导。"
 ---
 
 # 电子书高保真全书翻译助手 (ebook-translate)
