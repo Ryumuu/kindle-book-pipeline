@@ -46,6 +46,17 @@ flowchart LR
 
 卡住了就对 AI 说：**「体检一下」**。以后说「改设置」可以调整；[首次使用向导](book-search/references/onboarding.md)也说明了如何重来。
 
+## 用起来是什么样
+
+在 Claude Code 里说一句话，AI 自己找书、下载、转换、做质量检查，最后问你要不要发到 Kindle：
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/chat-dark.png">
+  <img src="docs/images/usage/chat-light.png" alt="对话示例：用户说帮我找《傲慢与偏见》转成 Kindle 格式，AI 在古腾堡搜到 3 个结果，下载原著，20 秒转成 AZW3 并通过质量检查，最后问要不要发到 Kindle" width="800">
+</picture>
+
+<sub>命令输出取自一次真实运行（古腾堡公版书，免登录）；对话外框是示意。</sub>
+
 ## 能做什么
 
 | 模块 | 作用 | 运行环境 |

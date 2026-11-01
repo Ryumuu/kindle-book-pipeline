@@ -48,6 +48,17 @@ flowchart LR
 
 Stuck? Say **“Run a health check”** (“体检一下”). Say “Change settings” (“改设置”) to adjust preferences. The [onboarding guide](book-search/references/onboarding.md) also explains how to start over.
 
+## What using it looks like
+
+Say one sentence in Claude Code; the AI finds the book, downloads it, converts it, runs the quality checks, then asks whether to send it to your Kindle:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/chat-en-dark.png">
+  <img src="docs/images/usage/chat-en-light.png" alt="Chat example: the user asks for Pride and Prejudice on Kindle; the AI finds 3 results on Project Gutenberg, downloads the novel, converts it to AZW3 in 20 seconds with all checks passing, then asks whether to send it" width="800">
+</picture>
+
+<sub>Command output is from a real run (public-domain Gutenberg book, no login); the chat frame is illustrative.</sub>
+
 ## What it does
 
 | Module | Purpose | Runs on |
