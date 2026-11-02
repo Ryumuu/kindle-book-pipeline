@@ -48,14 +48,18 @@ flowchart LR
 
 ## 用起来是什么样
 
-在 Claude Code 里说一句话，AI 自己找书、下载、转换、做质量检查，最后问你要不要发到 Kindle：
+跟任意 AI Agent 说一句想看什么书，它自己找书、下载、转换、推送；几分钟后书就在你的 Kindle 上了：
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/chat-dark.png">
-  <img src="docs/images/usage/chat-light.png" alt="对话示例：用户说帮我找《傲慢与偏见》转成 Kindle 格式，AI 在古腾堡搜到 3 个结果，下载原著，20 秒转成 AZW3 并通过质量检查，最后问要不要发到 Kindle" width="800">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/agent-chat-zh-dark.png">
+  <img src="docs/images/usage/agent-chat-zh-light.png" alt="对话示例：用户说我想看《傲慢与偏见》帮我发到 Kindle，AI 助手在古腾堡搜到原著、下载、21 秒转换通过质量检查，再用 Kindle 邮箱推送，最后提示已发到你的 Kindle" width="800">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/kindle-zh-dark.png">
+  <img src="docs/images/usage/kindle-zh-light.png" alt="Kindle 画面示例：左边书库第一本是标着「新」的《傲慢与偏见》，右边打开后是第一章正文" width="800">
 </picture>
 
-<sub>命令输出取自一次真实运行（古腾堡公版书，免登录）；对话外框是示意。</sub>
+<sub>命令输出取自一次真实运行（古腾堡公版书，免登录）；推送一步按脚本的真实成功输出格式模拟，邮箱是假的。对话框和 Kindle 画面是示意。</sub>
 
 ## 能做什么
 

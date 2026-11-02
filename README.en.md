@@ -50,14 +50,18 @@ Stuck? Say **“Run a health check”** (“体检一下”). Say “Change sett
 
 ## What using it looks like
 
-Say one sentence in Claude Code; the AI finds the book, downloads it, converts it, runs the quality checks, then asks whether to send it to your Kindle:
+Tell any AI agent which book you want. It finds, downloads, converts and sends it; a few minutes later the book is on your Kindle:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/chat-en-dark.png">
-  <img src="docs/images/usage/chat-en-light.png" alt="Chat example: the user asks for Pride and Prejudice on Kindle; the AI finds 3 results on Project Gutenberg, downloads the novel, converts it to AZW3 in 20 seconds with all checks passing, then asks whether to send it" width="800">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/agent-chat-en-dark.png">
+  <img src="docs/images/usage/agent-chat-en-light.png" alt="Chat example: the user asks for Pride and Prejudice on Kindle; the AI agent finds the novel on Project Gutenberg, downloads it, converts it in 21 seconds with all checks passing, emails it to Kindle, and reports it was sent" width="800">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage/kindle-en-dark.png">
+  <img src="docs/images/usage/kindle-en-light.png" alt="Kindle example: on the left, Pride and Prejudice is first in the library, marked NEW; on the right, the book open at Chapter I" width="800">
 </picture>
 
-<sub>Command output is from a real run (public-domain Gutenberg book, no login); the chat frame is illustrative.</sub>
+<sub>Command output is from a real run (public-domain Gutenberg book, no login); the send step mimics the script's real success output with a fake address. The chat window and Kindle screens are illustrative.</sub>
 
 ## What it does
 
